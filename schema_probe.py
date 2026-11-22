@@ -3,13 +3,13 @@ import json,tempfile,zipfile,shutil
 from pathlib import Path
 from datetime import datetime,timezone
 from urllib.request import Request,urlopen
-from xml.etree.ElementTree import iterparse
+from lxml.etree import iterparse
 from monthly_procurement_probe import FILES
 
 NS="{urn:schemas-microsoft-com:office:spreadsheet}"
 def inspect(path,max_head=5):
  sheets=[]; current=None;row=[];count=0
- for event,elem in iterparse(path,events=("start","end")):
+ for event,elem in iterparse(str(path),events=("start","end"),recover=True,huge_tree=True,encoding="utf-8"):
   name=elem.tag.rsplit("}",1)[-1]
   if event=="start" and name=="Worksheet":
    current={"name":elem.attrib.get(NS+"Name"),"rows":0,"head":[]};sheets.append(current)
@@ -28,6 +28,7 @@ def inspect(path,max_head=5):
       if len(vals)<100:vals.append(str(value)[:150])
      current["head"].append(vals)
    elem.clear()
+   while elem.getprevious() is not None: del elem.getparent()[0]
   elif event=="end" and name=="Worksheet":elem.clear()
  return sheets
 def run():
