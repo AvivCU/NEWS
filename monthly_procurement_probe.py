@@ -6,8 +6,8 @@ from urllib.request import Request,urlopen
 from urllib.error import HTTPError,URLError
 
 FILES={
- "tenders":"https://mr.gov.il/ilgstorefront/medias/Tenders-01112026.zip",
- "exemptions":"https://mr.gov.il/ilgstorefront/medias/Exemptions-01112026.zip"
+ "tenders":"https://mr.gov.il/ilgstorefront/medias/Tenders-01112026.zip?context=bWFzdGVyfHJvb3R8MjM5NzQxMXxhcHBsaWNhdGlvbi96aXB8aGYxL2g5YS85NDMyNzcxMTMzNDcwLnppcHxlMTA1NmYzODFjYmJmNzhhYTZhNDRjYWM3OGE3NDc5YjhiZjA4NzhmNDI4NWY3NWE4YmFkYjhiYzkyMDEzMmJm",
+ "exemptions":"https://mr.gov.il/ilgstorefront/medias/Exemptions-01112026.zip?context=bWFzdGVyfHJvb3R8MjYyOTIzNTB8YXBwbGljYXRpb24vemlwfGgzYy9oYWIvOTQzMjc3MTg1NDM2Ni56aXB8ZWNjMDlkNjgyZGQ5MTMxZTdhYmQ2OTY5YTlhZDc4MjExZGZmYjEwZDRhYjcyMjNkYWRjZDRlMzk5YTgwMjQ0Mg"
 }
 def scan():
  result={"checked_at":datetime.now(timezone.utc).isoformat(),"source_page":"https://mr.gov.il/ilgstorefront/he/news/details/230920201036","files":{}}
