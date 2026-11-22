@@ -1,0 +1,57 @@
+name: Daily government procurement update
+on:
+  schedule:
+    - cron: '37 5 * * *'
+  workflow_dispatch:
+    inputs:
+      force_download:
+        description: 'Re-download both published ZIPs for validation'
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/daily-procurement.yml
+permissions:
+  contents: write
+concurrency:
+  group: government-procurement-daily
+  cancel-in-progress: false
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Test monitor and safe-failure logic
+        run: python -m unittest discover -s tests -v
+      - name: Check exact government publication links; validate new ZIPs
+        env:
+          FORCE_DOWNLOAD: ${{ inputs.force_download || 'false' }}
+        run: |
+          if [ "$FORCE_DOWNLOAD" = "true" ]; then python daily_procurement.py --force-download
+          else python daily_procurement.py; fi
+      - name: Save confirmed publication version metadata
+        if: success()
+        run: |
+          if [ -f state/procurement_versions.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state/procurement_versions.json
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: update government procurement publication versions [skip ci]"
+              git push
+            fi
+          fi
+      - name: Upload public status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: procurement-daily-status
+          path: procurement_daily_report.json
+          retention-days: 14
