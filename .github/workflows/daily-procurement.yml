@@ -61,3 +61,5 @@ jobs:
           retention-days: 14
 
 # verification run: repeat without re-downloading unchanged ZIPs
+
+# second-run verification: unchanged archives must not be downloaded or re-alerted
