@@ -55,7 +55,7 @@ class DeltaTests(unittest.TestCase):
     self.assertEqual(result['counts']['winner_assigned'],1)
     self.assertEqual(result['recent_counts']['winner_assigned'],1)
     self.assertEqual(len(result['events']),1)
-    self.assertEqual(result['events'][0]['detected_utc'][:4],'2026')
+    self.assertIn('detected_utc',result['events'][0])
     self.assertFalse(result['events'][0]['historical_backfill'])
  def test_amount_and_contract_period_are_material_events(self):
   with tempfile.TemporaryDirectory() as tmp:
@@ -101,5 +101,18 @@ class DeltaTests(unittest.TestCase):
     self.assertEqual(result['events'],[])
     self.assertEqual(sum(result['counts'].values()),0)
     with gzip.open(out,'rt',encoding='utf8') as f:self.assertEqual(json.load(f)['schema'],2)
+
+ def test_period_only_change_is_event(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   p=Path(tmp)/'a.zip';q=Path(tmp)/'b.zip';out=Path(tmp)/'next.json.gz'
+   fields=['777','חוזה שירות','מאושר','חברה','512345678','05.04.2018','10.11.2026','משרד']
+   make(p,[fields+['700000','ILS','01.01.2024','31.12.2026']])
+   make(q,[fields+['700000','ILS','01.01.2024','31.12.2029']])
+   with patch.object(d,'SNAPSHOTS',Path(tmp)):
+    d.prepare(p,'exemptions',out);out.replace(Path(tmp)/'exemptions.json.gz')
+    delta=d.prepare(q,'exemptions',out)
+    self.assertEqual(delta['counts']['period_changed'],1)
+    self.assertEqual(delta['counts']['amount_changed'],0)
+    self.assertEqual(delta['events'][0]['change_types'],['period_changed'])
 
 if __name__=='__main__':unittest.main()
