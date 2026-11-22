@@ -22,3 +22,5 @@ jobs:
         with:
           name: rail-public-route-discovery
           path: rail_public_js_discovery.json
+
+# print context of public tender list API calls
