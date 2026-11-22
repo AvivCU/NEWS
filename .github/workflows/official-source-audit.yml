@@ -27,3 +27,5 @@ jobs:
           name: official-source-audit
           path: audit.json
           retention-days: 7
+
+# rerun with refined challenge detection and data.gov.il API probes
