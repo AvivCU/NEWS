@@ -22,3 +22,5 @@ jobs:
         with:
           name: monthly-procurement-probe
           path: monthly_procurement_probe.json
+
+# probe exact URLs provided by live government page
