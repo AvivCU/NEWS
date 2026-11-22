@@ -22,6 +22,8 @@ jobs:
         run: python official_source_audit.py
       - name: Discover government datasets via public CKAN API
         run: python ckan_discovery.py
+      - name: Fetch real records from official CKAN datasets
+        run: python gov_dataset_reader.py
       - name: Attach results
         if: always()
         uses: actions/upload-artifact@v4
@@ -30,6 +32,7 @@ jobs:
           path: |
             audit.json
             ckan_discovery.json
+            dataset_samples.json
           retention-days: 7
 
 # rerun with refined challenge detection and data.gov.il API probes
