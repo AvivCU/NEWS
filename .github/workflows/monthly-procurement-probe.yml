@@ -1,0 +1,24 @@
+name: Live government procurement monthly exports
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/monthly-procurement-probe.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python monthly_procurement_probe.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-procurement-probe
+          path: monthly_procurement_probe.json
