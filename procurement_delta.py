@@ -2,14 +2,16 @@
 Snapshots track publication IDs and public fields, not the source XLS. The first run
 creates a baseline without issuing historical alerts. No Monday integration here.
 """
-import gzip,hashlib,json,os,zipfile
+import gzip,hashlib,json,zipfile
+from decimal import Decimal, InvalidOperation
 from datetime import datetime,timedelta,timezone
 from pathlib import Path
 from lxml.etree import iterparse
 
 NS="{urn:schemas-microsoft-com:office:spreadsheet}"
 SNAPSHOTS=Path("state/procurement_snapshots")
-MAX_EVENTS=250
+MAX_EVENTS=10000
+SNAPSHOT_SCHEMA=2
 def norm(s):
  return " ".join(str(s or "").split())
 def row_values(element):
@@ -29,7 +31,7 @@ def load_snapshot(kind):
  if not path.exists():return None
  with gzip.open(path,"rt",encoding="utf-8") as file:
   d=json.load(file)
- if d.get("schema")!=1 or not isinstance(d.get("items"),dict):
+ if d.get("schema") not in (1,SNAPSHOT_SCHEMA) or not isinstance(d.get("items"),dict):
   raise ValueError("Incompatible snapshot "+str(path))
  return d
 def get_records(archive):
@@ -52,6 +54,24 @@ def get_records(archive):
 def parse_date(d):
  try:return datetime.strptime(norm(d)[:10],"%d.%m.%Y").date()
  except ValueError:return None
+def canonical_date(value):
+ d=parse_date(value)
+ return d.isoformat() if d else norm(value)
+
+def canonical_amount(value):
+ s=norm(value).replace(" ","").replace(",","").replace("₪","")
+ if not s:return ""
+ try:
+  dec=format(Decimal(s),"f")
+  return dec.rstrip("0").rstrip(".") if "." in dec else dec
+ except InvalidOperation:return norm(value)
+
+def financial_summary(rows):
+ amounts=sorted({(r[1]+" "+r[2]).strip() for r in rows if r[1]})
+ periods=sorted({r[3]+" → "+r[4] for r in rows if r[3] or r[4]})
+ return {"amounts":amounts[:15],"amount_values":len(amounts),
+         "periods":periods[:15],"period_values":len(periods)}
+
 def index_archive(path,kind):
  groups={};nrows=0;missing_id=0
  for row in get_records(path):
@@ -63,6 +83,7 @@ def index_archive(path,kind):
   entry=groups.get(pub)
   if entry is None:
    entry={"key":pub,"rows":0,"xor":0,"statuses":set(),"winners":set(),
+          "financial":[],
           "title":norm(row.get("שם הליך"))[:180],"published":norm(row.get("תאריך פרסום")),
           "updated":norm(row.get("תאריך עדכון")),"agency":norm(row.get("שם המשרד"))[:100]}
    groups[pub]=entry
@@ -71,6 +92,12 @@ def index_archive(path,kind):
   sup=norm(row.get("שם ספק זוכה" if kind=="tenders" else "שם ספק"))
   hp=norm(row.get("מספר חפ ספק"))
   if sup or hp:entry["winners"].add((hp or "")+"|"+sup)
+  amount=canonical_amount(row.get("היקף כספי"))
+  currency=norm(row.get("מטבע")).upper()
+  start=canonical_date(row.get("תאריך תחילת תקופת התקשרות"))
+  end=canonical_date(row.get("תאריך סיום תקופת התקשרות"))
+  if amount or currency or start or end:
+   entry["financial"].append([hp or sup,amount,currency,start,end])
   # Ignore update timestamp to avoid false positives from metadata-only date changes.
   comparison={k:v for k,v in row.items() if k!="תאריך עדכון"}
   fingerprint=hashlib.sha256(json.dumps(comparison,ensure_ascii=False,sort_keys=True).encode()).digest()
@@ -81,8 +108,9 @@ def index_archive(path,kind):
  for key,e in groups.items():
   items[key]={"digest":format(e["xor"],"064x"),"rows":e["rows"],
     "statuses":sorted(e["statuses"]),"winners":sorted(e["winners"]),
-    "title":e["title"],"published":e["published"],"updated":e["updated"],"agency":e["agency"]}
- return {"schema":1,"kind":kind,"rows":nrows,"missing_ids":missing_id,"items":items}
+    "title":e["title"],"published":e["published"],"updated":e["updated"],
+    "agency":e["agency"],"financial":sorted(e["financial"])}
+ return {"schema":SNAPSHOT_SCHEMA,"kind":kind,"rows":nrows,"missing_ids":missing_id,"items":items}
 def compare(old,new):
  if old is None:
   return {"status":"baseline","old_records":0,"new_records":new["rows"],
