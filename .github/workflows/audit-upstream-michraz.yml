@@ -1,0 +1,42 @@
+name: Audit external michraz 0.2.0 reproducible
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/audit-upstream-michraz.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout public external library at pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: Zikithezikit/michraz
+          ref: 06be298b45f49f9a7715c7e1f694870ff1c5800a
+          persist-credentials: false
+          path: external-michraz
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install external project and test tools
+        run: python -m pip install -e './external-michraz[dev]'
+      - name: Test static checks
+        working-directory: external-michraz
+        run: |
+          ruff check .
+          ruff format --check .
+          mypy
+      - name: Run offline unit and integration test suite
+        working-directory: external-michraz
+        run: |
+          pytest -m 'not live' -q --tb=short
+      - name: Run live-source health tests except disallowed CKAN API
+        working-directory: external-michraz
+        continue-on-error: true
+        run: |
+          echo 'NOTE: Beer Sheva CKAN datastore API intentionally excluded because data.gov.il robots.txt disallows /api/.'
+          pytest -m live -k 'not beersheva_shape' -v --tb=short
