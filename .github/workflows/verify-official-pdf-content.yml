@@ -1,0 +1,25 @@
+name: Verify public 2026 documents and classify content
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-official-pdf-content.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install 'pymupdf>=1.24'
+      - run: python official_pdf_content_probe.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-2026-pdf-content
+          path: official_pdf_content_probe.json
