@@ -24,3 +24,5 @@ jobs:
           name: michraz-adoption-live-report
           path: michraz_adoption_live_report.json
           retention-days: 10
+
+# verify complete RMI JSON body, not a truncated 800-KB prefix
