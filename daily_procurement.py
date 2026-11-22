@@ -48,7 +48,9 @@ def verify(url,kind):
    entries=[{"name":x.filename,"uncompressed_bytes":x.file_size} for x in z.infolist()]
    if not any(x["name"].lower().endswith((".xls",".xlsx",".csv")) for x in entries):raise RuntimeError("no spreadsheet")
    if z.testzip() is not None:raise RuntimeError("ZIP CRC failed")
-  return {"bytes":size,"sha256":digest.hexdigest(),"entries":entries}
+  pending=SNAPSHOTS/(kind+".json.gz.pending")
+  delta=prepare(path,kind,pending)
+  return {"bytes":size,"sha256":digest.hexdigest(),"entries":entries,"delta":delta}
 def run(force=False):
  previous=json.loads(STATE.read_text("utf-8")) if STATE.exists() else {"versions":{}}
  report={"checked_utc":now(),"source_page":PAGE,"results":{},"outcome":"unknown"}
