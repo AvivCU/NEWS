@@ -13,13 +13,13 @@ KINDS=("tenders","exemptions")
 def now():return datetime.now(timezone.utc).isoformat()
 def req(url,t=35):return urlopen(Request(url,headers={"User-Agent":"Mozilla/5.0 (compatible; RosarioPublicFeeds/1.0)","Accept":"text/html,application/zip,*/*"}),timeout=t)
 def extract(page):
- page=html.unescape(page).replace("\\/","/").replace("\\u0026","&")
- matches=re.findall(r'(?:https?://(?:www\\.)?mr\\.gov\\.il)?/ilgstorefront/medias/(?:Tenders|Exemptions)-\\d{8}\\.zip(?:\\?context=[A-Za-z0-9_%+=/-]+)?',page,re.I)
+ page=html.unescape(page).replace("\/","/").replace("\u0026","&")
+ matches=re.findall(r'(?:https?://(?:www\.)?mr\.gov\.il)?/ilgstorefront/medias/(?:Tenders|Exemptions)-\d{8}\.zip(?:\?context=[A-Za-z0-9_%+=/-]+)?',page,re.I)
  out={}
  for raw in matches:
   u=urljoin(PAGE,raw) if raw.startswith("/") else raw
   kind="tenders" if "/Tenders-" in u else "exemptions"
-  ds=re.search(r'-(\\d{8})\\.zip',u)
+  ds=re.search(r'-(\d{8})\.zip',u)
   if not ds:continue
   try:d=datetime.strptime(ds.group(1),"%d%m%Y").date()
   except ValueError:continue
@@ -68,10 +68,10 @@ def run(force=False):
    report["results"][kind]=info
   if any(x["status"]=="failed" for x in report["results"].values()):raise RuntimeError("ZIP validation failed; state unchanged")
   STATE.parent.mkdir(parents=True,exist_ok=True)
-  STATE.write_text(json.dumps({"updated_utc":now(),"versions":updated},ensure_ascii=False,indent=2)+"\\n",encoding="utf-8")
+  STATE.write_text(json.dumps({"updated_utc":now(),"versions":updated},ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
   report["outcome"]="ok"
  except Exception as e:report.update(outcome="failed",error=f"{type(e).__name__}: {e}")
- REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\\n",encoding="utf-8")
+ REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
  for k,v in report["results"].items():print(k,v["status"],"downloaded",v.get("bytes",v.get("downloaded_bytes",0)),flush=True)
  print("OUTCOME",report["outcome"],report.get("error",""),flush=True)
  return report
