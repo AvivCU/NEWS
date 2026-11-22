@@ -1,0 +1,29 @@
+name: Full official datasets scan
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/full-official-scan.yml
+permissions:
+  contents: read
+jobs:
+  full-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Full official CKAN scan (read-only)
+        run: python full_dataset_scan.py
+      - name: Publish aggregate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-full-scan-report
+          path: |
+            full_dataset_report.json
+            full_dataset_report.md
+          retention-days: 14
