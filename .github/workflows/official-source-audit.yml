@@ -1,0 +1,25 @@
+name: Official sources access audit
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Probe public source sites
+        run: python official_source_audit.py
+      - name: Attach results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-source-audit
+          path: audit.json
+          retention-days: 7
