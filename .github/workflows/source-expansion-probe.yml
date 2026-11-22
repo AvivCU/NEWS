@@ -1,0 +1,27 @@
+name: Probe additional official data sources November 2026
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/source-expansion-probe.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test 13 public official source endpoints
+        run: python source_expansion_probe.py
+      - name: Save probe results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-source-expansion-probe
+          path: source_expansion_probe.json
+          retention-days: 14
