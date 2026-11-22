@@ -1,0 +1,26 @@
+name: Verify live RMI codes and Beer Sheva official export URLs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/michraz-adoption-live.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Public official routes only
+        run: python michraz_adoption_live_probe.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: michraz-adoption-live-report
+          path: michraz_adoption_live_report.json
+          retention-days: 10
