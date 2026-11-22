@@ -111,42 +111,82 @@ def index_archive(path,kind):
     "title":e["title"],"published":e["published"],"updated":e["updated"],
     "agency":e["agency"],"financial":sorted(e["financial"])}
  return {"schema":SNAPSHOT_SCHEMA,"kind":kind,"rows":nrows,"missing_ids":missing_id,"items":items}
-def compare(old,new):
+def compare(old,new,observed_at=None):
+ """Classify new business changes when first observed, regardless of tender age."""
+ observed_at=observed_at or datetime.now(timezone.utc).isoformat()
+ observed_day=datetime.fromisoformat(observed_at.replace("Z","+00:00")).date()
+ cutoff=observed_day-timedelta(days=120)
  if old is None:
   return {"status":"baseline","old_records":0,"new_records":new["rows"],
-          "old_publications":0,"new_publications":len(new["items"]),"counts":{},"recent_counts":{},
-          "events":[],"omitted_events":0}
+          "old_publications":0,"new_publications":len(new["items"]),
+          "counts":{},"recent_counts":{},"events":[],"omitted_events":0}
  prior=old["items"];current=new["items"]
  if len(current)<len(prior)*.75:
   raise ValueError("Publication count dropped >25%; refusing destructive replacement")
- counts={"new_publication":0,"winner_assigned":0,"winner_changed":0,"status_changed":0,"details_changed":0,"removed":0}
- recent={k:0 for k in counts};events=[]
- cutoff=datetime.now(timezone.utc).date()-timedelta(days=120)
+ keys=("new_publication","winner_assigned","winner_changed","status_changed",
+       "amount_changed","period_changed","details_changed","removed")
+ counts={k:0 for k in keys};recent={k:0 for k in keys};events=[]
  for key,entry in current.items():
   previous=prior.get(key)
-  if previous is None:types=["new_publication"]
-  elif previous["digest"]==entry["digest"] and previous["rows"]==entry["rows"]:continue
+  if previous is None:
+   changes=["new_publication"]
+  elif previous["digest"]==entry["digest"] and previous["rows"]==entry["rows"]:
+   continue
   else:
-   types=[]
-   if set(entry["winners"])!=set(previous["winners"]):
-    types.append("winner_assigned" if not previous["winners"] and entry["winners"] else "winner_changed")
-   if entry["statuses"]!=previous["statuses"]:types.append("status_changed")
-   if not types:types.append("details_changed")
-  date=parse_date(entry["published"]);is_recent=bool(date and date>=cutoff)
-  for change in types:
+   changes=[]
+   before_winners=set(previous.get("winners",[]))
+   after_winners=set(entry.get("winners",[]))
+   if before_winners!=after_winners:
+    changes.append("winner_assigned" if not before_winners and after_winners else "winner_changed")
+   if previous.get("statuses",[])!=entry.get("statuses",[]):
+    changes.append("status_changed")
+   if "financial" in previous:
+    old_fin=previous["financial"];new_fin=entry["financial"]
+    same_suppliers=before_winners==after_winners
+    def amounts(rows):
+     return sorted(tuple(r[:3] if same_suppliers else r[1:3])
+                   for r in rows if r[1] or r[2])
+    def periods(rows):
+     return sorted(tuple((r[0],r[3],r[4]) if same_suppliers else r[3:5])
+                   for r in rows if r[3] or r[4])
+    if amounts(old_fin)!=amounts(new_fin):
+     changes.append("amount_changed")
+    if periods(old_fin)!=periods(new_fin):
+     changes.append("period_changed")
+   if not changes:changes=["details_changed"]
+  published_date=parse_date(entry.get("published"))
+  # Existing tenders: changes are newly observed today even if published years ago.
+  # New IDs with very old publication dates are kept but flagged as backfills.
+  fresh=previous is not None or published_date is None or published_date>=cutoff
+  for change in changes:
    counts[change]+=1
-   if is_recent:recent[change]+=1
-  if len(events)<MAX_EVENTS and is_recent and "details_changed" not in types:
-   events.append({"event_id":hashlib.sha256((new["kind"]+":"+key+":"+entry["digest"]).encode()).hexdigest()[:20],
-    "publication_id":key,"change_types":types,"published":entry["published"],"updated":entry["updated"],
-    "title":entry["title"],"agency":entry["agency"],"statuses":entry["statuses"],
-    "winners":entry["winners"][:10]})
+   if fresh:recent[change]+=1
+  if changes!=["details_changed"]:
+   if len(events)>=MAX_EVENTS:
+    raise ValueError("Too many material events; refusing to truncate and advance state")
+   event={"publication_id":key,"change_types":changes,"detected_utc":observed_at,
+          "published":entry.get("published",""),"source_updated":entry.get("updated",""),
+          "title":entry.get("title",""),"agency":entry.get("agency",""),
+          "statuses":entry.get("statuses",[]),"winners":entry.get("winners",[])[:15],
+          "historical_backfill":previous is None and published_date is not None and published_date<cutoff}
+   if "amount_changed" in changes or "period_changed" in changes:
+    event["financial_before"]=financial_summary(previous.get("financial",[]))
+    event["financial_after"]=financial_summary(entry.get("financial",[]))
+   signal=json.dumps([new["kind"],key,changes,
+                      previous.get("statuses") if previous else None,
+                      previous.get("winners") if previous else None,
+                      previous.get("financial") if previous else None,
+                      entry.get("statuses"),entry.get("winners"),entry.get("financial")],
+                     ensure_ascii=False,sort_keys=True,separators=(",",":"))
+   event["event_id"]=hashlib.sha256(signal.encode()).hexdigest()[:24]
+   events.append(event)
  for key in prior.keys()-current.keys():counts["removed"]+=1
  return {"status":"compared","old_records":old["rows"],"new_records":new["rows"],
          "old_publications":len(prior),"new_publications":len(current),
-         "counts":counts,"recent_counts":recent,"events":events,
-         "omitted_events":max(0,sum(recent.values())-len(events)),
-         "recent_definition":"publication date within 120 days, not necessarily first observed"}
+         "counts":counts,"recent_counts":recent,"events":events,"omitted_events":0,
+         "recent_definition":"Existing publication changes are fresh when first detected; old new IDs are backfills",
+         "observed_utc":observed_at}
+
 def prepare(path,kind,dest):
  old=load_snapshot(kind)
  new=index_archive(path,kind)
