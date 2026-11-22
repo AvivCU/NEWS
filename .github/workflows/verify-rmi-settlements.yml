@@ -1,0 +1,44 @@
+name: Verify upstream RMI settlements map provenance and coverage
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-rmi-settlements.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download exact public source commit
+        uses: actions/checkout@v4
+        with:
+          repository: Zikithezikit/michraz
+          ref: 06be298b45f49f9a7715c7e1f694870ff1c5800a
+          persist-credentials: false
+          path: michraz
+      - name: Check map content and known missing Rosario codes
+        run: |
+          python - <<'PY'
+          import json
+          p='michraz/src/michraz/sources/data/rmi_settlements.json'
+          d=json.load(open(p,encoding='utf-8'))
+          s=d['settlements']
+          assert len(s)>=1400,len(s)
+          assert all(s.get(x) for x in ('1743','1697','9954','9948'))
+          print('SETTLEMENT_MAP',len(s), 'source',d.get('source'),'fetched',d.get('fetched'))
+          print('MISSING_ROSARIO_CODES',{x:s[x] for x in ('1743','1697','9954','9948')})
+          PY
+      - name: Prepare reproducible MIT licensed dataset
+        run: |
+          mkdir -p output
+          cp michraz/src/michraz/sources/data/rmi_settlements.json output/rmi_settlements.json
+          cp michraz/LICENSE output/LICENSE-michraz.txt
+      - name: Upload dataset and attribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: rmi-settlements-lookup-verified
+          path: output/
+          retention-days: 7
