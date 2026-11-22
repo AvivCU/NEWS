@@ -16,6 +16,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - run: python -m pip install lxml==6.0.2
       - run: python schema_probe.py
       - if: always()
         uses: actions/upload-artifact@v4
@@ -24,3 +25,5 @@ jobs:
           path: monthly_schema.json
 
 # scan native XML Spreadsheet 2003 instead of BIFF
+
+# rerun with robust streaming lxml parser
