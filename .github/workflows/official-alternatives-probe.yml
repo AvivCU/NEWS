@@ -1,0 +1,25 @@
+name: Test official alternative routes for NTA Rail XPLAN gov
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/official-alternatives-probe.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python official_alternative_routes.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-alternative-routes-report
+          path: official_alternate_paths_report.json
+          retention-days: 14
