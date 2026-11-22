@@ -28,3 +28,15 @@ This public repository contains **no private Rosario watchlists, Monday data or 
 - GitHub scheduled workflows may run late and are not guaranteed to start at the exact minute.
 - The tracker considers a changed published URL a new version. If a file's bytes change at the same URL, the lightweight daily check will not detect it; periodic forced validation can catch this.
 - Publication date and reporting period are distinct: verify actual row dates before creating 2025/2026 business leads.
+
+## Publication-level change detection (implemented and tested)
+- Reader: [procurement_delta.py](procurement_delta.py) streams the government's mislabeled `.xls` files (XML Spreadsheet 2003), with strict publication-id validation.
+- The source contains `מספר פרסום`, `סטטוס`, `שם ספק זוכה` (tenders), `שם ספק` (exemptions), `מספר חפ ספק` and relevant dates. Groups all rows sharing one publication ID to avoid confusing multi-supplier publications with new tenders.
+- Snapshot baseline: `state/procurement_snapshots/{tenders,exemptions}.json.gz` is committed after successful archive verification. No giant Excel file is committed.
+- On a new archive it classifies `new_publication`, `winner_assigned`, `winner_changed`, `status_changed`, and `details_changed`, and counts removed publication IDs separately. Update-date-only changes are ignored.
+- **First import is baseline-only** and produces **zero historical new-event alerts**. Verified baseline from the November 2026 files: 24,892 tender rows / 22,290 publication IDs, and 241,584 exemption rows / 212,302 publication IDs.
+- Later events are exported to the `procurement_events.json` Action artifact; the report includes counts and up to 250 recent entries (publication date within 120 days).
+- Unchanged daily run: no ZIP download and no event emission. Synthetic tests cover new tenders, first winner, changed status, and unchanged update-only dates.
+- **Every Sunday on the scheduled run,** force-download and compare file hashes, so updates to an existing URL can also be detected. This is *one* weekly expensive validation, not a daily re-download.
+- Source metadata and both snapshots are committed only when archive download and parsing both succeed; the old baseline is retained on failure.
+- Does **not** yet write leads to private Rosario Monday boards, assess company private ownership/revenue, or replace its existing production scrapers. Events in `NEWS` are ready for integration.
