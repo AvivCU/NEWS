@@ -1,0 +1,24 @@
+name: Discover publicly shipped Rail tender API route
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/rail-public-js.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python rail_public_js_discovery.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rail-public-route-discovery
+          path: rail_public_js_discovery.json
