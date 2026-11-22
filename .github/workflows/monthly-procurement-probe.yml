@@ -24,3 +24,5 @@ jobs:
           path: monthly_procurement_probe.json
 
 # probe exact URLs provided by live government page
+
+# manual complete ZIP probe after monitor setup
