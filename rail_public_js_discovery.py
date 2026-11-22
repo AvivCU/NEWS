@@ -14,10 +14,10 @@ routes=set(re.findall(r'[/][A-Za-z0-9_-]*(?:api|auction|tender|procurement|tende
 filtered=sorted(u for u in urls if any(s in u.lower() for s in ["rail.co.il","tender","auction","/api/"]))
 print("PUBLIC_ENDPOINT_CANDIDATES",json.dumps(filtered[:75],ensure_ascii=False),flush=True)
 print("PUBLIC_ROUTE_CANDIDATES",json.dumps(sorted(routes)[:180],ensure_ascii=False),flush=True)
-for needle in ["generalauctions","GeneralAuctions","apiurl","apiUrl","baseURL","tenders","auctions","GetAuctions","getAuctions"]:
+for needle in ["generalauctions","GeneralAuctions","apiurl","apiUrl","baseURL","tenders","auctions","GetAuctions","getAuctions","GetTenderTypes","GetTendersByType","rail-api.rail.co.il/content/api/v1/"]:
  i=content.find(needle)
  if i>=0:
-  snippet=content[max(0,i-100):i+220]
+  snippet=content[max(0,i-250):i+450]
   # Avoid printing keys/tokens/strings that are unrelated to routing.
   snippet=re.sub(r'(?i)(password|secret|token|key)(.{0,100})',r'\1=[redacted]',snippet)
   print("ROUTE_CONTEXT",needle,snippet[:320],flush=True)
