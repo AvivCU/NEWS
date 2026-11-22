@@ -6,7 +6,7 @@ from datetime import datetime,timezone
 from pathlib import Path
 from urllib.parse import urljoin
 from urllib.request import Request,urlopen
-from procurement_delta import SNAPSHOTS, prepare
+from procurement_delta import SNAPSHOTS, SNAPSHOT_SCHEMA, prepare
 PAGE="https://mr.gov.il/ilgstorefront/he/news/details/230920201036"
 STATE=Path("state/procurement_versions.json")
 REPORT=Path("procurement_daily_report.json")
@@ -61,12 +61,12 @@ def run(force=False):
   updated=dict(previous.get("versions",{}))
   for kind in KINDS:
    url=urls[kind];old=updated.get(kind,{})
-   if old.get("url")==url and (SNAPSHOTS/(kind+".json.gz")).exists() and not force:
+   if old.get("url")==url and old.get("snapshot_schema")==SNAPSHOT_SCHEMA and (SNAPSHOTS/(kind+".json.gz")).exists() and not force:
     report["results"][kind]={"status":"unchanged","downloaded_bytes":0,"url":url};continue
    info={"url":url,"status":"new" if url!=old.get("url") else "revalidated"}
    try:
     info.update(verify(url,kind))
-    updated[kind]={"url":url,"first_seen_utc":now() if url!=old.get("url") else old.get("first_seen_utc",now()),"sha256":info["sha256"],"bytes":info["bytes"],"entries":info["entries"]}
+    updated[kind]={"url":url,"first_seen_utc":now() if url!=old.get("url") else old.get("first_seen_utc",now()),"sha256":info["sha256"],"bytes":info["bytes"],"entries":info["entries"],"snapshot_schema":SNAPSHOT_SCHEMA}
    except Exception as e:info.update(status="failed",error=f"{type(e).__name__}: {e}")
    report["results"][kind]=info
   if any(x["status"]=="failed" for x in report["results"].values()):raise RuntimeError("ZIP validation failed; state unchanged")
