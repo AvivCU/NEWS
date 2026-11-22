@@ -1,0 +1,21 @@
+name: Validate procurement freshness and financial changes
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/validate-procurement-fixes.yml
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install lxml==6.0.2
+      - name: All procurement tests
+        run: python -m unittest discover -s tests -v
