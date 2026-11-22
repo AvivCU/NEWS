@@ -29,3 +29,5 @@ jobs:
           retention-days: 14
 
 # retry: 10k-row batches, reduced request frequency
+
+# full baseline scan after daily monitor setup
