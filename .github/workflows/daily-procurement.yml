@@ -67,3 +67,5 @@ jobs:
 # verification run: repeat without re-downloading unchanged ZIPs
 
 # second-run verification: unchanged archives must not be downloaded or re-alerted
+
+# migrate version-1 financial snapshots to version-2 and verify current official files
