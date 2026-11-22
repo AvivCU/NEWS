@@ -1,0 +1,29 @@
+name: Full real RMI 90-day official procurement read-only scan
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/full-real-rmi-scan.yml
+permissions:
+  contents: read
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install requests
+      - name: Complete live read-only source scan
+        run: python full_real_rmi_scan.py
+      - name: Publish real scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-rmi-official-90d
+          path: rmi_full_live/
+          if-no-files-found: ignore
+          retention-days: 10
