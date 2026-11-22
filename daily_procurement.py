@@ -6,6 +6,7 @@ from datetime import datetime,timezone
 from pathlib import Path
 from urllib.parse import urljoin
 from urllib.request import Request,urlopen
+from procurement_delta import SNAPSHOTS, prepare
 PAGE="https://mr.gov.il/ilgstorefront/he/news/details/230920201036"
 STATE=Path("state/procurement_versions.json")
 REPORT=Path("procurement_daily_report.json")
@@ -58,7 +59,7 @@ def run(force=False):
   updated=dict(previous.get("versions",{}))
   for kind in KINDS:
    url=urls[kind];old=updated.get(kind,{})
-   if old.get("url")==url and not force:
+   if old.get("url")==url and (SNAPSHOTS/(kind+".json.gz")).exists() and not force:
     report["results"][kind]={"status":"unchanged","downloaded_bytes":0,"url":url};continue
    info={"url":url,"status":"new" if url!=old.get("url") else "revalidated"}
    try:
@@ -67,11 +68,20 @@ def run(force=False):
    except Exception as e:info.update(status="failed",error=f"{type(e).__name__}: {e}")
    report["results"][kind]=info
   if any(x["status"]=="failed" for x in report["results"].values()):raise RuntimeError("ZIP validation failed; state unchanged")
+  for kind in KINDS:
+   pending=SNAPSHOTS/(kind+".json.gz.pending")
+   if pending.exists():pending.replace(SNAPSHOTS/(kind+".json.gz"))
+  events={"checked_utc":now(),"kinds":{k:v.get("delta",{"status":"unchanged","counts":{},"recent_counts":{},"events":[]}) for k,v in report["results"].items()}}
+  Path("procurement_events.json").write_text(json.dumps(events,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
   if updated!=previous.get("versions",{}):
    STATE.parent.mkdir(parents=True,exist_ok=True)
    STATE.write_text(json.dumps({"updated_utc":now(),"versions":updated},ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
   report["outcome"]="ok"
- except Exception as e:report.update(outcome="failed",error=f"{type(e).__name__}: {e}")
+ except Exception as e:
+  report.update(outcome="failed",error=f"{type(e).__name__}: {e}")
+  for kind in KINDS:
+   pending=SNAPSHOTS/(kind+".json.gz.pending")
+   if pending.exists():pending.unlink()
  REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
  for k,v in report["results"].items():print(k,v["status"],"downloaded",v.get("bytes",v.get("downloaded_bytes",0)),flush=True)
  print("OUTCOME",report["outcome"],report.get("error",""),flush=True)
