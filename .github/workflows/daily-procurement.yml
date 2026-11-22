@@ -36,8 +36,12 @@ jobs:
         env:
           FORCE_DOWNLOAD: ${{ inputs.force_download || 'false' }}
         run: |
-          if [ "$FORCE_DOWNLOAD" = "true" ]; then python daily_procurement.py --force-download
-          else python daily_procurement.py; fi
+          # Sunday UTC: verify content even if government reused the same URL.
+          if [ "$FORCE_DOWNLOAD" = "true" ] || { [ "$GITHUB_EVENT_NAME" = "schedule" ] && [ "$(date -u +%u)" = "7" ]; }; then
+            python daily_procurement.py --force-download
+          else
+            python daily_procurement.py
+          fi
       - name: Save confirmed publication version metadata
         if: success()
         run: |
