@@ -36,3 +36,5 @@ jobs:
           retention-days: 7
 
 # rerun with refined challenge detection and data.gov.il API probes
+
+# audit rerun after daily monitor setup
