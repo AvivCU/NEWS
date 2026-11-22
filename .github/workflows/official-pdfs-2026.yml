@@ -1,0 +1,24 @@
+name: Verify live official 2026 PDF documents
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/official-pdfs-2026.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python official_2026_pdf_probe.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: government-nta-2026-documents-audit
+          path: official_2026_pdf_access.json
