@@ -22,3 +22,5 @@ jobs:
         with:
           name: official-rail-api-live-report
           path: rail_api_live_report.json
+
+# diagnose robots policy only
