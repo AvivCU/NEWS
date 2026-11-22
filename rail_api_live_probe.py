@@ -31,6 +31,12 @@ def main():
  rp.set_url("https://rail-api.rail.co.il/robots.txt")
  try:rp.read()
  except Exception as e:print("ROBOTS_FETCH_ERROR",str(e)[:120],flush=True)
+ print("ROBOTS_INFO",repr(rp.__dict__)[:500],flush=True)
+ try:
+  with urllib.request.urlopen("https://rail-api.rail.co.il/robots.txt",timeout=15) as r:
+   print("ROBOTS_CONTENT",r.status,r.read(1500).decode("utf8","replace"),flush=True)
+ except Exception as e:
+  print("ROBOTS_FETCH_ERROR",str(e)[:180],flush=True)
  if not rp.can_fetch("Rosario-Feeds",BASE+"GetTenderTypes"):
   result["blocked_by_robots"]=True
   Path("rail_api_live_report.json").write_text(json.dumps(result,indent=2))
