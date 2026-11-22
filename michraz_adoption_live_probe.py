@@ -25,7 +25,7 @@ url="https://apps.land.gov.il/MichrazimSite/api/YeshuvimApi/Get"
 try:
  req=urllib.request.Request(url,headers={"User-Agent":"Rosario public-source integrity audit 1.0","Accept":"application/json"})
  with urllib.request.urlopen(req,timeout=25) as r:
-  raw=r.read(800000);info={"http":r.status,"size_read":len(raw)}
+  raw=r.read(8000000);info={"http":r.status,"size_read":len(raw)}
  val=json.loads(raw)
  if isinstance(val,list):
   info["records"]=len(val);info["keys"]=list(val[0])[:20] if val and isinstance(val[0],dict) else []
