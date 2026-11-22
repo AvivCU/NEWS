@@ -1,0 +1,36 @@
+name: Compare RMI official settlements current vs michraz snapshot
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/rmi-current-versus-michraz.yml
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Zikithezikit/michraz
+          ref: 06be298b45f49f9a7715c7e1f694870ff1c5800a
+          path: michraz
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/checkout@v4
+        with:
+          path: rosario-research
+      - run: python rosario-research/rmi_current_map_comparison.py
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rmi-live-lookup-comparison
+          path: |
+            rmi_current_vs_upstream.json
+            rmi_settlements_current.json
+            michraz/LICENSE
+          retention-days: 10
