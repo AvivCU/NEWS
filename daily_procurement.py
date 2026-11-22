@@ -87,6 +87,10 @@ def run(force=False):
  REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
  for k,v in report["results"].items():print(k,v["status"],"downloaded",v.get("bytes",v.get("downloaded_bytes",0)),flush=True)
  print("OUTCOME",report["outcome"],report.get("error",""),flush=True)
+ for kind,info in report["results"].items():
+  if "delta" in info:
+   summary=info["delta"]
+   print("DELTA",kind,"status",summary["status"],"counts",json.dumps(summary.get("counts",{}),ensure_ascii=False),"events",len(summary.get("events",[])),flush=True)
  return report
 if __name__=="__main__":
  p=argparse.ArgumentParser();p.add_argument("--force-download",action="store_true")
