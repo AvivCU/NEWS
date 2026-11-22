@@ -1,6 +1,10 @@
 name: Official sources access audit
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/official-source-audit.yml
 permissions:
   contents: read
 jobs:
