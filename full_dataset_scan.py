@@ -30,11 +30,11 @@ DATASETS={
   "fields":["_id","MisparTaagidShutfutMenifa","ShemTaagidShutfut","ShnatDivuach","MisparAtarSvivati","MezahemBeplita","KamutPlita","TaarichDivuahBefoal"]},
 }
 BASE="https://data.gov.il/api/3/action/datastore_search"
-PAGE_SIZE=2000
+PAGE_SIZE=10000
 def fetch(resource_id,fields,offset,limit=PAGE_SIZE):
  query=urlencode({"resource_id":resource_id,"limit":limit,"offset":offset,"fields":",".join(fields)})
  request=Request(BASE+"?"+query,headers={"Accept":"application/json","User-Agent":"Rosario-full-public-source-audit/1.0"})
- for attempt in range(3):
+ for attempt in range(5):
   try:
    with urlopen(request,timeout=35) as response:
     payload=json.load(response)
@@ -42,8 +42,8 @@ def fetch(resource_id,fields,offset,limit=PAGE_SIZE):
     raise ValueError("CKAN returned unsuccessful response")
    return payload["result"]
   except (HTTPError,URLError,TimeoutError,OSError,ValueError) as e:
-   if attempt==2: raise
-   time.sleep((attempt+1)*1.5)
+   if attempt==4: raise
+   time.sleep(min(35, (2 ** attempt) * 3))
 def year_of(value):
  if value is None:return None
  s=str(value)
@@ -115,7 +115,7 @@ def analyze(key,spec):
    print(f"{key}: {last_offset}/{total}",flush=True)
   if total is not None and last_offset>=int(total):break
   if len(rows)<PAGE_SIZE:break
-  time.sleep(.04)
+  time.sleep(1.4)
  return {
   "resource_id":spec["id"],"reported_total":total,"rows_scanned":records,
   "complete":err is None and (total is None or records>=total),"error":err,
