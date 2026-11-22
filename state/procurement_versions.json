@@ -1,0 +1,29 @@
+{
+  "updated_utc": "2026-11-22T11:28:54.586874+00:00",
+  "versions": {
+    "tenders": {
+      "url": "https://mr.gov.il/ilgstorefront/medias/Tenders-01112026.zip?context=bWFzdGVyfHJvb3R8MjM5NzQxMXxhcHBsaWNhdGlvbi96aXB8aGYxL2g5YS85NDMyNzcxMTMzNDcwLnppcHxlMTA1NmYzODFjYmJmNzhhYTZhNDRjYWM3OGE3NDc5YjhiZjA4NzhmNDI4NWY3NWE4YmFkYjhiYzkyMDEzMmJm",
+      "first_seen_utc": "2026-11-22T11:28:32.219676+00:00",
+      "sha256": "94a61d607cccbbda7a50627087df4ef422cd99e6383f6aec15de9856cd3c2ba3",
+      "bytes": 2397411,
+      "entries": [
+        {
+          "name": "öîê Äïÿåëì_B.xls",
+          "uncompressed_bytes": 36364746
+        }
+      ]
+    },
+    "exemptions": {
+      "url": "https://mr.gov.il/ilgstorefront/medias/Exemptions-01112026.zip?context=bWFzdGVyfHJvb3R8MjYyOTIzNTB8YXBwbGljYXRpb24vemlwfGgzYy9oYWIvOTQzMjc3MTg1NDM2Ni56aXB8ZWNjMDlkNjgyZGQ5MTMxZTdhYmQ2OTY5YTlhZDc4MjExZGZmYjEwZDRhYjcyMjNkYWRjZDRlMzk5YTgwMjQ0Mg",
+      "first_seen_utc": "2026-11-22T11:28:54.586777+00:00",
+      "sha256": "047daf1cd8acd1bece539c88b64ce1ad3c4ff22c1f90881414168667e2351de4",
+      "bytes": 26292350,
+      "entries": [
+        {
+          "name": "öîê öêàÿëì_B.xls",
+          "uncompressed_bytes": 481951224
+        }
+      ]
+    }
+  }
+}
