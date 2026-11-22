@@ -67,8 +67,9 @@ def run(force=False):
    except Exception as e:info.update(status="failed",error=f"{type(e).__name__}: {e}")
    report["results"][kind]=info
   if any(x["status"]=="failed" for x in report["results"].values()):raise RuntimeError("ZIP validation failed; state unchanged")
-  STATE.parent.mkdir(parents=True,exist_ok=True)
-  STATE.write_text(json.dumps({"updated_utc":now(),"versions":updated},ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+  if updated!=previous.get("versions",{}):
+   STATE.parent.mkdir(parents=True,exist_ok=True)
+   STATE.write_text(json.dumps({"updated_utc":now(),"versions":updated},ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
   report["outcome"]="ok"
  except Exception as e:report.update(outcome="failed",error=f"{type(e).__name__}: {e}")
  REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
