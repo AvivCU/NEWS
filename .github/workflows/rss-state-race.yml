@@ -6,6 +6,7 @@ on:
     paths:
       - "rss_state_git_race_test.py"
       - "rss_state_schema_race_test.py"
+      - "rss_seen_gzip_git_race_test.py"
       - ".github/workflows/rss-state-race.yml"
   workflow_dispatch: {}
 permissions:
@@ -20,3 +21,4 @@ jobs:
         run: |
           python rss_state_git_race_test.py
           python rss_state_schema_race_test.py
+          python rss_seen_gzip_git_race_test.py
