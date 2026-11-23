@@ -7,6 +7,7 @@ on:
       - tase_tests/**
       - tase_procurement_screen.py
       - tase_news_integration.py
+      - tase_company_guard.py
       - .github/workflows/daily-procurement.yml
       - tools/tase_live_acceptance.py
       - docs/tase_registry.md
