@@ -413,8 +413,8 @@ def validate(obj, now=None, days=10, stale=True):
     return True, ""
 
 
-def decide(obj, name="", corporate_id="", now=None):
-    good, reason = validate(obj, now=now)
+def _decide_core(obj, name="", corporate_id="", now=None, *, validation=None, candidate_rows=None):
+    good, reason = validation if validation is not None else validate(obj, now=now)
     if not good:
         return {"status": "לא ניתן לקבוע", "auto_disqualify": False,
                 "requires_review": False, "reason": reason,
@@ -425,7 +425,7 @@ def decide(obj, name="", corporate_id="", now=None):
                 "requires_review": True, "reason": "ח.פ. לא תקין; יש לבדוק",
                 "last_updated": obj["last_updated"]}
     normalized = match_name_key(name)
-    rows = obj["rows"]
+    rows = obj["rows"] if candidate_rows is None else candidate_rows
     found_id = [r for r in rows if cid and r["corporate_id"] == cid]
     found_name = [r for r in rows if normalized and normalized in exact_names(r)]
     if found_id:
@@ -474,6 +474,42 @@ def decide(obj, name="", corporate_id="", now=None):
         "warning": "הרענון האחרון נכשל; נעשה שימוש במידע האחרון התקין"
                    if obj["run_status"] == "failed" else None,
     }
+
+
+def decide(obj, name="", corporate_id="", now=None):
+    """Single-company lookup; validation and all matches checked afresh."""
+    return _decide_core(obj, name=name, corporate_id=corporate_id, now=now)
+
+
+class PreparedRegistry:
+    """Safe O(1) shortlist for bulk screening; validate snapshot only once.
+
+    Uses exactly the same lookup policy and response formatter as decide().
+    Neither an invalid source nor a missing ID can cause auto-disqualification.
+    """
+    def __init__(self, obj, now=None):
+        self.obj = obj
+        self.validation = validate(obj, now=now)
+        self.by_id = {}
+        self.by_name = {}
+        if self.validation[0]:
+            for row in obj["rows"]:
+                cid = row["corporate_id"]
+                if cid:
+                    self.by_id.setdefault(cid, []).append(row)
+                for key in exact_names(row):
+                    self.by_name.setdefault(key, []).append(row)
+
+    def decide(self, name="", corporate_id=""):
+        cid = corp_id(corporate_id)
+        key = match_name_key(name)
+        matched = self.by_id.get(cid, ()) if cid else ()
+        if not matched:
+            matched = self.by_name.get(key, ()) if key else ()
+        return _decide_core(
+            self.obj, name=name, corporate_id=corporate_id,
+            validation=self.validation, candidate_rows=matched,
+        )
 
 
 def read(path):
