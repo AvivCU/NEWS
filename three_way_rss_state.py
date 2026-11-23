@@ -71,4 +71,20 @@ def merge_json_state(base, local, remote):
     """Return merged copy, or raise StateConflict; never mutate the inputs."""
     if not all(isinstance(x, dict) for x in (base, local, remote)):
         raise TypeError("Expected three JSON objects")
-    return _merge(base, local, remote, "state")
+    merged = _merge(base, local, remote, "state")
+    # A body recovery and a concurrent retry must not leave a stale failure
+    # masquerading as an outstanding task. A field-specific production
+    # resolution rule is needed; stop rather than invent one.
+    for writer, other in ((local, remote), (remote, local)):
+        new_bodies = writer.get("bodies", {})
+        old_bodies = base.get("bodies", {})
+        other_fails = other.get("body_fails", {})
+        old_fails = base.get("body_fails", {})
+        if not all(isinstance(x, dict) for x in (new_bodies, old_bodies, other_fails, old_fails)):
+            continue
+        for article, body in new_bodies.items():
+            if old_bodies.get(article, _MISSING) == body:
+                continue
+            if article in other_fails and other_fails.get(article) != old_fails.get(article, _MISSING):
+                raise StateConflict(f"state.bodies/body_fails.{article}: recovered body races with retry")
+    return merged
