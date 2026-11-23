@@ -16,4 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run offline regression and live public RSS check
-        run: python task7_same_day_public_probe.py
+        run: |
+          python task7_cutoff_policy.py
+          python task7_same_day_public_probe.py
