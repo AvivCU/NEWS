@@ -75,3 +75,5 @@ def probe():
 if __name__=="__main__":
     self_test()
     probe()
+
+# CI push trigger: workflow now exists on this branch.
