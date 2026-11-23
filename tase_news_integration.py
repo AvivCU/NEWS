@@ -67,13 +67,29 @@ def main(argv=None):
     p.add_argument("--events", type=Path, default=screen.DEFAULT_EVENTS)
     p.add_argument("--registry", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--status-output", type=Path, required=False,
+                   help="Optional aggregate-only, publishable status JSON (never issuer details)")
     args = p.parse_args(argv)
+    if args.status_output and args.status_output.resolve() in (
+        args.events.resolve(), args.output.resolve(), args.registry.resolve()
+    ):
+        print("TASE status output must not overwrite inputs", file=sys.stderr)
+        return 2
     try:
         record = run(args.events, args.output, args.registry)
+        if args.status_output:
+            screen._atomic_json(args.status_output, record)
         print(json.dumps(record, ensure_ascii=False))
         return 0
     except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
-        # Redact details, e.g. an invalid JSON message may contain private data.
+        # Never print license-restricted issuer details or raw input.
+        record = {"stage": "unavailable", "source_events_unchanged": True,
+                  "published": False, "error_type": type(exc).__name__}
+        if args.status_output:
+            try:
+                screen._atomic_json(args.status_output, record)
+            except OSError:
+                pass
         print("TASE shadow unavailable: " + type(exc).__name__, file=sys.stderr)
         return 2
 
