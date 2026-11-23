@@ -20,7 +20,8 @@ def sample():
         iid = 2000 + i
         cid = str(510000000 + i)
         companies.append({"issuerId": iid, "corporateId": cid,
-                          "companyName": f"חברת דוגמה {i}"})
+                          "companyName": f"חברת דוגמה {i}",
+                          "companyFullName": f'חברת דוגמה {i} בע"מ'})
         english.append({"issuerId": iid, "corporateId": cid,
                         "companyName": f"Sample Company {i}"})
         kinds = ("B", "S") if i == 0 else (("B",) if i in (1, 2, 3) else ("S",))
@@ -77,6 +78,42 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(r["status"], "ברשימה")
         self.assertTrue(r["requires_review"])
         self.assertFalse(r["auto_disqualify"])
+
+    def test_short_and_full_legal_name_match_same_issuer(self):
+        for name in ('חברת דוגמה 1', 'חברת דוגמה 1 בע"מ',
+                     'חברת דוגמה 1 בעמ', 'חברת דוגמה 1 בע\"מ'):
+            with self.subTest(name=name):
+                result = t.decide(self.registry, name=name, now=NOW)
+                self.assertEqual(result["status"], "ברשימה")
+                self.assertEqual(result["type"], 'אג"ח')
+                self.assertEqual(result["corporate_id"], "510000001")
+                self.assertEqual(result["match_method"], "exact_name_only")
+                self.assertTrue(result["requires_review"])
+                self.assertFalse(result["auto_disqualify"])
+
+    def test_verified_id_plus_matching_full_name_allows_auto(self):
+        result = t.decide(self.registry, corporate_id="510000000",
+                          name='חברת דוגמה 0 בע"מ', now=NOW)
+        self.assertEqual(result["status"], "ברשימה")
+        self.assertEqual(result["type"], "שניהם")
+        self.assertTrue(result["auto_disqualify"])
+
+    def test_identical_short_names_across_issuers_must_not_merge_types(self):
+        raw = sample()
+        raw["companies_he"][1]["companyName"] = "שם כפול"
+        raw["companies_he"][4]["companyName"] = "שם כפול"
+        reg = t.build(raw, at=NOW.isoformat())
+        result = t.decide(reg, name="שם כפול", now=NOW)
+        self.assertEqual(result["match_method"], "ambiguous_exact_name")
+        self.assertEqual(result["type"], "לא חד-משמעי")
+        self.assertEqual(result["issuer_count"], 2)
+        self.assertTrue(result["requires_review"])
+        self.assertFalse(result["auto_disqualify"])
+
+    def test_full_name_is_not_automatically_matched_by_partial_substring(self):
+        result = t.decide(self.registry, name="חברת דוגמה", now=NOW)
+        self.assertEqual(result["status"], "לא ברשימה")
+        self.assertFalse(result["auto_disqualify"])
 
     def test_similar_name_is_not_exact(self):
         r = t.decide(self.registry, name="חברת דוגמה 1 בעמ", now=NOW)
