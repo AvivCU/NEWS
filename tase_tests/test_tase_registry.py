@@ -189,6 +189,11 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(t.classify("תעודות סל מניות"), "")
         self.assertEqual(t.classify('אג"ח קונצרני ני"ע מסחריים'), "")
 
+    def test_future_unknown_numeric_type_is_never_assumed_share_or_bond(self):
+        for code in ("0197", "0399", "0599", "0508", "0113", "3201"):
+            with self.subTest(code=code):
+                self.assertEqual(t.classify_code(code, "מניה רגילה אג\"ח קונצרני"), "")
+
     def test_numeric_share_subtype_stops_false_bond_only(self):
         raw = sample()
         raw["types"].append({
