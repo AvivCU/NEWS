@@ -4,3 +4,6 @@ procurement_events_tase_review.json
 .tase-*.json
 tase_weekly.json
 tase_official_smoke.json
+
+# Aggregate-only TASE run status is uploaded, never included in source commits.
+tase_shadow_status.json
