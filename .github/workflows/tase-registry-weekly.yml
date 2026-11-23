@@ -9,7 +9,7 @@ on:
       - .github/workflows/tase-registry-weekly.yml
       - data/latest/tase_registered_securities.json
   push:
-    branches: [main]
+    branches: [main, feature/tase-exclusion-registry-20261123]
     paths:
       - tase_registry.py
       - tests/test_tase_registry.py
@@ -42,7 +42,7 @@ jobs:
   official-pr-smoke:
     # Same-repository PR only. A read-only auth+parser test using the secret;
     # NO raw securities are uploaded or committed to the public repository.
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/tase-exclusion-registry-20261123')
     needs: offline-tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
