@@ -64,7 +64,8 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Verify NEWS procurement code and workflow were not modified
         run: |
-          git diff --exit-code origin/main -- daily_procurement.py procurement_delta.py gov_dataset_reader.py .github/workflows/daily-procurement.yml
+          git fetch --no-tags --depth=1 origin main
+          git diff --exit-code FETCH_HEAD HEAD -- daily_procurement.py procurement_delta.py gov_dataset_reader.py .github/workflows/daily-procurement.yml
 
   official-pr-smoke:
     # Same-repository PR only. A read-only auth+parser test using the secret;
