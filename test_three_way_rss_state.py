@@ -41,6 +41,8 @@ def test():
     merged=merge_json_state(base,local,remote)
     ok(set(merged["body_fails"])=={A,B},"retry entries both retained")
 
+    # Isolate independent recovery and stale remote failure with no parallel retry edit.
+    local["body_fails"].pop(A)
     local["bodies"][A]="2026-11-23T09:05:00Z"
     remote["body_fails"][A]={"retry_attempts":3}
     merged=merge_json_state(base,local,remote)
