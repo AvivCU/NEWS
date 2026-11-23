@@ -1,0 +1,19 @@
+name: Full vs incremental rematch synthetic benchmark
+on:
+  push:
+    branches:
+      - research/full-rematch-benchmark-20261123
+    paths:
+      - "full_rematch_benchmark.py"
+      - ".github/workflows/full-rematch-benchmark.yml"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  synthetic-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare matching results and processing cost
+        run: python full_rematch_benchmark.py
