@@ -1,6 +1,6 @@
 # NEWS / Rosario — מאגר פסילה TASE
 
-**Status (2026-11-23): REVIEW REQUIRED.** This implementation has not yet fetched a live, authenticated official TASE API response. The committed JSON intentionally contains **zero companies**, with run_status=failed. It is not a working production exclusion list until official data is fetched and real companies are verified.
+**Status (2026-11-23): REVIEW REQUIRED.** The read-only GitHub smoke test successfully fetched and parsed live official TASE API responses using the new credential; the PR remains unmerged and no official snapshot has been committed. The committed JSON intentionally contains **zero companies**, with run_status=failed. It is not a working production exclusion list until official data is fetched and real companies are verified.
 
 ## What the module does
 
@@ -36,7 +36,7 @@ Official Data Hub access may require an application, subscription/approval and a
 ## Installation and weekly operation
 
 1. Register legally for the official TASE Data Hub **Securities - Basic** API product.
-2. Save the actual key as a GitHub Actions repository secret named **TASE_API_KEY**. Do not commit it to the public NEWS repository.
+2. Save the actual key as a GitHub Actions repository secret named **RNEWS_TASE_2026**. The workflow maps this secret to the Python process environment variable `TASE_API_KEY`. Do not commit it to the public NEWS repository.
 3. Once merged, run the **TASE official exclusion registry** GitHub workflow manually. Its normal schedule is Friday 08:17 UTC (10:17 Israel winter / 11:17 Israel summer), before the Saturday leads cycle.
 4. Check the workflow report, row_count, issuer_count, dates, and real-company acceptance test **before** switching any Rosario task to automatic rejection.
 
