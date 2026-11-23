@@ -75,8 +75,8 @@ jobs:
           from subprocess import check_output
           before = check_output(["git", "show", "FETCH_HEAD:.github/workflows/daily-procurement.yml"]).decode("utf-8")
           after = Path(".github/workflows/daily-procurement.yml").read_text(encoding="utf-8")
-          start = "      - name: Annotate NEW procurement events with official TASE status (shadow only)\\n"
-          end = "      - name: Upload public status report\\n"
+          start = "      - name: Annotate NEW procurement events with official TASE status (shadow only)\n"
+          end = "      - name: Upload public status report\n"
           assert after.count(start) == 1 and after.count(end) == 1
           prefix, remainder = after.split(start, 1)
           _, suffix = remainder.split(end, 1)
