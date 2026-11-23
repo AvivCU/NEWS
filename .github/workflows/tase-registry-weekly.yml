@@ -80,7 +80,8 @@ jobs:
           assert after.count(start) == 1 and after.count(end) == 1
           prefix, remainder = after.split(start, 1)
           _, suffix = remainder.split(end, 1)
-          assert prefix + end + suffix == before, "NEWS workflow changed beyond additive shadow step"
+          expected = before.replace("            procurement_events.json\n", "            procurement_events.json\n            tase_shadow_status.json\n")
+          assert prefix + end + suffix == expected, "NEWS workflow changed beyond additive shadow step and status artifact"
           print("PASS: procurement core untouched; daily workflow contains only the optional shadow step")
           PY
 
