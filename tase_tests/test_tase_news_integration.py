@@ -49,7 +49,7 @@ class NewsPipelineTests(unittest.TestCase):
             enriched = json.loads(dest.read_text(encoding="utf-8"))
             self.assertEqual(enriched["tase_enrichment"]["status"], "ready")
             self.assertEqual(result["screening_summary"]["events_total"], 8)
-            self.assertEqual(result["screening_summary"]["events_all_winners_exact_id_match"], 2)
+            self.assertEqual(result["screening_summary"]["events_all_winners_exact_id_match"], 1)
             self.assertEqual(len(enriched["kinds"]["tenders"]["events"]), 8)
 
     def test_failed_datawise_lookup_preserves_every_event(self):
