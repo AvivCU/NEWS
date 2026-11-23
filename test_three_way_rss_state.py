@@ -45,9 +45,8 @@ def test():
     local["body_fails"].pop(A)
     local["bodies"][A]="2026-11-23T09:05:00Z"
     remote["body_fails"][A]={"retry_attempts":3}
-    merged=merge_json_state(base,local,remote)
-    # No automatic correction here: stale failure state must be handled by domain logic.
-    ok(A in merged["bodies"] and A in merged["body_fails"],"cross-field invariant explicitly exposed")
+    conflict(base,local,remote)
+    ok(True,"concurrent body recovery and retry fails closed")
 
     conflict({"body_fails":{A:{"retry_attempts":1}}},
              {"body_fails":{A:{"retry_attempts":2}}},
