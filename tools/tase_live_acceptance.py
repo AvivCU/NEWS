@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Read-only acceptance check against freshly fetched official TASE data.
 
-This script only prints aggregate metrics. Do not log or persist the underlying
-licensed rows in a public repository, Actions artifacts or build logs.
+This script prints aggregate metrics and a few hardcoded public-company name
+lookup results, not raw licensed securities data or complete company lists.
 """
 from __future__ import annotations
 
@@ -39,6 +39,32 @@ KNOWN_LISTED_CORPORATE_IDS = (
     "520032046",  # Mizrahi Tefahot Issuances — bond-only candidate
 )
 BOND_ONLY_CANDIDATES = ("520000472", "520032046")
+
+# Input-name tests deliberately independent of snapshot-derived aliases.
+# The tuple's expected corporate ID is our reference for the named issuer.
+KNOWN_NAME_CASES = (
+    ("בזק", "520031931"),
+    ('בזק החברה הישראלית לתקשורת בע"מ', "520031931"),
+    ("טבע", "520013954"),
+    ('טבע תעשיות פרמצבטיות בע"מ', "520013954"),
+    ("לאומי", "520018078"),
+    ('בנק לאומי לישראל בע"מ', "520018078"),
+    ("פועלים", "520000118"),
+    ('בנק הפועלים בע"מ', "520000118"),
+    ("מזרחי טפחות", "520000522"),
+    ("נייס", "520036872"),
+    ("מטריקס", "520039413"),
+    ("קסטרו", "520037649"),
+    ("אאורה", "520038274"),
+    ("אלוני חץ", "520038506"),
+    ("דלתא גליל", "520025602"),
+    ("חשמל", "520000472"),
+    ('חברת החשמל לישראל בע"מ', "520000472"),
+    ("מזרחי טפחות הנפ", "520032046"),
+    ('מזרחי טפחות חברה להנפקות בע"מ', "520032046"),
+    ("חמת", "520038530"),
+)
+
 
 
 def audit(obj):
@@ -88,6 +114,30 @@ def audit(obj):
            types_by_issuer["שניהם"]) < 1:
         raise ValueError("Missing bond-only, share-only or mixed categories")
 
+    # A user supplies a NAME ONLY: the result must identify the correct
+    # issuer and observed share/bond category, while never auto-excluding.
+    named_cases_passed = 0
+    named_examples = []
+    for input_name, expected_corporate_id in KNOWN_NAME_CASES:
+        result = decide(obj, name=input_name)
+        if (result["status"] != "ברשימה"
+                or result["corporate_id"] != expected_corporate_id
+                or result["match_method"] != "exact_name_only"
+                or not result["requires_review"]
+                or result["auto_disqualify"]):
+            raise ValueError("Independent named-company lookup failed")
+        if expected_corporate_id in BOND_ONLY_CANDIDATES and result["type"] != 'אג"ח':
+            raise ValueError("Known bond-only company did not classify as corporate debt")
+        named_cases_passed += 1
+        if input_name in ("בזק", "טבע", "לאומי", "קסטרו", "חשמל",
+                          "מזרחי טפחות הנפ", "מטריקס", "אאורה"):
+            named_examples.append({
+                "input_name": input_name,
+                "result": result["status"],
+                "security_type": result["type"],
+                "requires_id_verification": result["requires_review"],
+            })
+
     # 10 truly synthetic absent IDs; do not call these real private companies.
     synthetic_negative_checks = 0
     for i in range(10):
@@ -106,7 +156,7 @@ def audit(obj):
     if stale["status"] != "לא ניתן לקבוע" or stale["auto_disqualify"]:
         raise ValueError("Stale source did not fail closed")
 
-    # Aggregate counts only; no names, identifiers or securities are printed.
+    # No raw response bodies or complete lists are printed; the input examples above are fixed.
     return {
         "result": "PASS",
         "source_companies": obj["diagnostics"]["source_companies"],
@@ -120,6 +170,8 @@ def audit(obj):
         "independent_known_public_positives": found,
         "known_public_not_observed": missing,
         "independent_known_bond_only_positives": bond_only_found,
+        "name_only_real_company_cases_passed": named_cases_passed,
+        "name_only_examples": named_examples,
         "synthetic_unknown_id_checks": synthetic_negative_checks,
         "name_only_requires_review": True,
         "stale_data_fails_closed": True,
