@@ -137,25 +137,32 @@ def classify(label) -> str:
 
 
 # The official Securities Types endpoint (verified 2026-11-23) uses numeric
-# securityFullTypeCode. Match the ISSUER's own security class, not words in an
-# ETF/fund name. Specifically 0104 is Leumi's traded stock, not a bond.
-# Exclude 0113 (closed mutual fund), 0504 (bond tracking certificate),
-# 0506 (deposit receipt), 0508 (commercial paper), 0512 (debt participation).
-NON_BOND_05_CODES = frozenset(("0504", "0506", "0508", "0512"))
-NON_SHARE_01_CODES = frozenset(("0113",))
+# four-digit securityFullTypeCode. Strictly allowlist observed categories;
+# unknown codes are UNCLASSIFIED, never silently treated as listed shares/bonds.
+# 0104 is Leumi's stock share. 0113 is a closed mutual fund, NOT stock.
+# Exclude debt-looking 0504/0506/0508/0512 (tracking/deposit certificate,
+# commercial paper, debt participation) from corporate bonds.
+OFFICIAL_STOCK_CODES = frozenset((
+    "0101", "0102", "0103", "0104", "0105", "0106", "0107",
+    "0108", "0109", "0110", "0111", "0112", "0114", "0198", "0199",
+))
+OFFICIAL_CORPORATE_BOND_CODES = frozenset((
+    "0301", "0302", "0303", "0304", "0305", "0306",
+    "0501", "0502", "0503", "0505", "0507",
+    "0509", "0510", "0511", "0513", "0514",
+))
 
 
 def classify_code(code, label="") -> str:
     code = str(code or "").strip()
+    if code in OFFICIAL_STOCK_CODES:
+        return "מניה"
+    if code in OFFICIAL_CORPORATE_BOND_CODES:
+        return "אג\"ח"
     if re.fullmatch(r"[0-9]{4}", code):
-        if code.startswith("01") and code not in NON_SHARE_01_CODES:
-            return "מניה"
-        if code.startswith("03") or (
-                code.startswith("05") and code not in NON_BOND_05_CODES):
-            return "אג\"ח"
         return ""
-    # Synthetic tests and verified operator exports may supply descriptive
-    # non-numeric categories, but never override an official 4-digit type code.
+    # Deterministic synthetic tests and verified operator exports may supply
+    # descriptive non-numeric categories; don't override an official code.
     return classify(label)
 
 
