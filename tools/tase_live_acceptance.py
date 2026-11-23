@@ -110,6 +110,13 @@ def audit(obj):
     if bond_only_found < 1:
         raise ValueError("No independent bond-only issuer verified")
 
+    # Independent factual equity+bond reference checks: Leumi was formerly
+    # incorrectly bond-only because code 0104 (stock share) went unclassified.
+    for bank_cid in ("520018078", "520000118", "520000522"):
+        bank = decide(obj, corporate_id=bank_cid)
+        if bank["status"] != "ברשימה" or bank["type"] != "שניהם":
+            raise ValueError("Known listed bank has both stock and bonds, but classification disagrees")
+
     if min(types_by_issuer['אג"ח'], types_by_issuer['מניה'],
            types_by_issuer["שניהם"]) < 1:
         raise ValueError("Missing bond-only, share-only or mixed categories")
@@ -170,6 +177,7 @@ def audit(obj):
         "independent_known_public_positives": found,
         "known_public_not_observed": missing,
         "independent_known_bond_only_positives": bond_only_found,
+        "independent_known_banks_with_both": 3,
         "name_only_real_company_cases_passed": named_cases_passed,
         "name_only_examples": named_examples,
         "synthetic_unknown_id_checks": synthetic_negative_checks,
