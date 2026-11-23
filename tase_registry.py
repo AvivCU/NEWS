@@ -118,7 +118,7 @@ class TaseClient:
         if not api_key.strip():
             raise SourceError("TASE_API_KEY missing; no official refresh performed")
         self._key = api_key.strip()
-        self._open = opener or request.build_opener(NoRedirect()).open
+        self._open = opener or request.build_opener(request.ProxyHandler({}), NoRedirect()).open
         self.interval = interval
 
     def get(self, path: str, language="he-IL"):
@@ -193,7 +193,7 @@ def collect(client: TaseClient, lookback=28, today=None):
                 record = dict(row)
                 record["_observed_on"] = day.isoformat()
                 record["_source_endpoint"] = endpoint
-                observed[sid] = record
+                observed.setdefault(sid, record)
     if len(dates) < 5 or len(observed) < 200:
         raise SourceError("Too little official trade coverage; snapshot unchanged")
     return {
@@ -465,6 +465,8 @@ def refresh(path=DEFAULT_FILE, lookback=28, client=None):
         client = client or TaseClient(os.environ.get("TASE_API_KEY", ""))
         data = collect(client, lookback=lookback)
         obj = build(data)
+        if obj["row_count"] < 100 or obj["issuer_count"] < 30:
+            raise SourceError("Too few confidently linked securities/issuers; refusing partial source")
         valid, reason = validate(obj)
         if not valid:
             raise SourceError(f"Built file failed validation: {reason}")
