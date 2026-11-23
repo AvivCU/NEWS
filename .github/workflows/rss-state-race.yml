@@ -1,0 +1,19 @@
+name: RSS state concurrent Git write integrity (isolated)
+on:
+  push:
+    branches:
+      - research/rss-state-git-race-20261123
+    paths:
+      - "rss_state_git_race_test.py"
+      - ".github/workflows/rss-state-race.yml"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  real-git-race:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run two writers against disposable bare Git repo
+        run: python rss_state_git_race_test.py
