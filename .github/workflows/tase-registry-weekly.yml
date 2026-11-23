@@ -62,10 +62,23 @@ jobs:
         run: python -m pip install lxml==6.0.2
       - name: Run ALL original NEWS procurement tests unchanged
         run: python -m unittest discover -s tests -v
-      - name: Verify NEWS procurement code and workflow were not modified
+      - name: Verify NEWS core unchanged and daily integration is additive only
         run: |
           git fetch --no-tags --depth=1 origin main
-          git diff --exit-code FETCH_HEAD HEAD -- daily_procurement.py procurement_delta.py gov_dataset_reader.py .github/workflows/daily-procurement.yml
+          git diff --exit-code FETCH_HEAD HEAD -- daily_procurement.py procurement_delta.py gov_dataset_reader.py
+          python - <<'PY'
+          from pathlib import Path
+          from subprocess import check_output
+          before = check_output(["git", "show", "FETCH_HEAD:.github/workflows/daily-procurement.yml"]).decode("utf-8")
+          after = Path(".github/workflows/daily-procurement.yml").read_text(encoding="utf-8")
+          start = "      - name: Annotate NEW procurement events with official TASE status (shadow only)\\n"
+          end = "      - name: Upload public status report\\n"
+          assert after.count(start) == 1 and after.count(end) == 1
+          prefix, remainder = after.split(start, 1)
+          _, suffix = remainder.split(end, 1)
+          assert prefix + end + suffix == before, "NEWS workflow changed beyond additive shadow step"
+          print("PASS: procurement core untouched; daily workflow contains only the optional shadow step")
+          PY
 
   official-pr-smoke:
     # Same-repository PR only. A read-only auth+parser test using the secret;
