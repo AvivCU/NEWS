@@ -6,6 +6,8 @@ on:
       - tase_registry.py
       - tase_tests/**
       - tase_procurement_screen.py
+      - tase_news_integration.py
+      - .github/workflows/daily-procurement.yml
       - tools/tase_live_acceptance.py
       - docs/tase_registry.md
       - .github/workflows/tase-registry-weekly.yml
@@ -16,6 +18,8 @@ on:
       - tase_registry.py
       - tase_tests/**
       - tase_procurement_screen.py
+      - tase_news_integration.py
+      - .github/workflows/daily-procurement.yml
       - tools/tase_live_acceptance.py
       - .github/workflows/tase-registry-weekly.yml
   schedule:
@@ -110,6 +114,7 @@ jobs:
           python tools/tase_live_acceptance.py --registry "$RUNNER_TEMP/tase_official_smoke.json"
           python tase_tests/live_procurement_shadow.py --registry "$RUNNER_TEMP/tase_official_smoke.json"
           python tase_tests/full_live_name_audit.py --registry "$RUNNER_TEMP/tase_official_smoke.json"
+          python tase_tests/real_news_baseline_audit.py --registry "$RUNNER_TEMP/tase_official_smoke.json" --limit 2500
 
   official-weekly-refresh:
     # Never push, upload or persist TASE-licensed raw data in this public repo.
