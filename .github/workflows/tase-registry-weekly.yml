@@ -57,7 +57,7 @@ jobs:
           python-version: '3.11'
       - name: Verify official API authorization and full registry build (no public upload)
         env:
-          TASE_API_KEY: ${{ secrets.TASE_API_KEY }}
+          TASE_API_KEY: ${{ secrets.NEWSR }}
         run: |
           set -euo pipefail
           if [ -z "$TASE_API_KEY" ]; then
