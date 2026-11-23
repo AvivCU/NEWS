@@ -114,3 +114,5 @@ if __name__=="__main__":
     for fn in [deletion_vs_unchanged,deletion_vs_concurrent_edit,accidental_reintroduction_from_stale_base,concurrent_appends_same_parent,newer_run_is_not_newer_information,retry_count_reset,duplicate_hit_url_modified,pruning_14day_boundary,no_conflict_passthrough,delete_while_insert_other]:
         check(fn)
     print("EDGE_TESTS=10/10; demo/specification, NOT verification of PR68 code")
+
+# Trigger CI after the workflow has been created.
