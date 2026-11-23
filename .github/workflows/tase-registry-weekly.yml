@@ -39,6 +39,34 @@ jobs:
       - name: Validate registry code without secret or outbound requests
         run: python -m unittest discover -s tests -p 'test_tase_registry.py' -v
 
+  official-pr-smoke:
+    # Same-repository PR only. A read-only auth+parser test using the secret;
+    # NO raw securities are uploaded or committed to the public repository.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: offline-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify official API authorization and full registry build (no public upload)
+        env:
+          TASE_API_KEY: ${{ secrets.TASE_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TASE_API_KEY" ]; then
+            echo "::error::TASE_API_KEY missing in NEWS repository Secrets / Actions"
+            exit 2
+          fi
+          python tase_registry.py refresh --lookback 28 --output "$RUNNER_TEMP/tase_official_smoke.json"
+          python tase_registry.py stats --registry "$RUNNER_TEMP/tase_official_smoke.json"
+
   official-weekly-refresh:
     if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     needs: offline-tests
