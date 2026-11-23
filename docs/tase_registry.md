@@ -29,6 +29,8 @@ Official site references:
 - https://market.tase.co.il/he/market_data/tase-companies/public
 - https://market.tase.co.il/he/market_data/securities/info/all?cl1=0&dType=1
 
+**Verified coverage gap (Nov 23 live run):** the official company list contains **693** issuers, while **663** issuers had at least one securely classified observed share/bond; **30** official-list issuers therefore lack a positive share/bond classification in this snapshot. There are additionally **42 unlinked security observations**. These require further investigation and must not be treated as private companies or no-bond evidence.
+
 **Important:** The date-based trade list is a union of recently *traded* securities, not a complete list of all *registered* securities. It can establish reliable issuer-linked **positives** but does not prove a company has no bonds/shares, particularly suspended or illiquid securities. Do not upgrade the coverage to exhaustive without verifying a full official active-listing export or endpoint. No fake source results are created.
 
 Official Data Hub access may require an application, subscription/approval and adherence to use/redistribution terms. No bot protection bypass, browser automation or alternative unlicensed source is attempted. Any 401/403/429 stops immediately.
