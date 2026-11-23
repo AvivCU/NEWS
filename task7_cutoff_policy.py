@@ -5,7 +5,7 @@ import urllib.parse
 from zoneinfo import ZoneInfo
 
 TZ=ZoneInfo("Asia/Jerusalem")
-SCAN_RE=re.compile(r"^סריקה\\s+(\\d{2})\\.(\\d{2})\\.(\\d{2})(?:\\s+(\\d{2}):(\\d{2}))?\\s*:",re.M)
+SCAN_RE=re.compile(r"^סריקה\s+(\d{2})\.(\d{2})\.(\d{2})(?:\s+(\d{2}):(\d{2}))?\s*:",re.M)
 
 def latest_scan(notes):
     scans=[]
