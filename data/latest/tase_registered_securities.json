@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "last_updated": null,
+  "source_as_of": null,
+  "last_attempt_at": null,
+  "run_status": "failed",
+  "last_error": "No successfully fetched official TASE snapshot yet. Do not auto-disqualify.",
+  "row_count": 0,
+  "issuer_count": 0,
+  "source": {
+    "provider": "Official Tel Aviv Stock Exchange / DataWise",
+    "companies": "https://market.tase.co.il/he/market_data/tase-companies/public",
+    "securities": "https://market.tase.co.il/he/market_data/securities/info/all?cl1=0&dType=1",
+    "api": "https://datawise.tase.co.il"
+  },
+  "coverage": {
+    "kind": "no_successful_official_fetch",
+    "complete_registered_securities": false
+  },
+  "rows": []
+}
