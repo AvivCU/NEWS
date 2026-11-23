@@ -173,6 +173,38 @@ class RegistryTest(unittest.TestCase):
         got = t.decide(reg, corporate_id="510000000", now=NOW)
         self.assertEqual(got["type"], "מניה")
 
+    def test_official_four_digit_share_codes_and_bonds(self):
+        for code in ("0101", "0102", "0104", "0114", "0198", "0199"):
+            with self.subTest(code=code):
+                self.assertEqual(t.classify_code(code, "מניה מנית סטוק"), "מניה")
+        for code in ("0301", "0501", "0503", "0507", "0510", "0511", "0514"):
+            with self.subTest(code=code):
+                self.assertEqual(t.classify_code(code, 'אג"ח קונצרני'), 'אג"ח')
+
+    def test_funds_commercial_paper_deposits_not_mislabeled(self):
+        for code in ("0113", "0201", "0401", "0504", "0506", "0508",
+                     "0512", "3201", "3301", "4201", "4401"):
+            with self.subTest(code=code):
+                self.assertEqual(t.classify_code(code, "מניות ואג\"ח"), "")
+        self.assertEqual(t.classify("תעודות סל מניות"), "")
+        self.assertEqual(t.classify('אג"ח קונצרני ני"ע מסחריים'), "")
+
+    def test_numeric_share_subtype_stops_false_bond_only(self):
+        raw = sample()
+        raw["types"].append({
+            "securityFullTypeCode": "0104",
+            "securityMainTypeDesc": "מניה", "securityTypeDesc": "מנית סטוק"})
+        raw["securities"].append({
+            "securityId": 9876543, "issuerId": 2001, "corporateId": "510000001",
+            "securityFullTypeCode": "0104",
+            "_observed_on": "2026-11-20",
+        })
+        reg = t.build(raw, at=NOW.isoformat())
+        found = t.decide(reg, name="חברת דוגמה 1", now=NOW)
+        self.assertEqual(found["type"], "שניהם")
+        self.assertFalse(found["auto_disqualify"])
+        self.assertTrue(found["requires_review"])
+
     def test_unknown_types_and_government_debt_excluded(self):
         raw = sample()
         raw["securities"].append({
