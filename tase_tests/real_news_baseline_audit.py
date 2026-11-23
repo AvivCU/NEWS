@@ -12,6 +12,7 @@ import argparse
 import copy
 import gzip
 import json
+import random
 from pathlib import Path
 import tempfile
 import sys
@@ -33,9 +34,12 @@ def sample_from_snapshot(path: Path, *, max_events=2500) -> dict:
         raise ValueError("Procurement snapshot unexpectedly empty")
     selected = []
     used = set()
-    # Spread alphabetically sorted publication IDs; no sampling off system time.
-    # At most 2500 genuine historical publications containing awarded suppliers.
-    for pub_id, entry in sorted(items.items()):
+    # Seeded random sample ACROSS ALL historical publication IDs, not just
+    # the earliest IDs. Reproducible and independent of network/system time.
+    eligible = [(pub_id, entry) for pub_id, entry in sorted(items.items())
+                if isinstance(entry.get("winners"), list) and entry["winners"]]
+    random.Random(20261123).shuffle(eligible)
+    for pub_id, entry in eligible:
         winners = entry.get("winners", [])
         if not isinstance(winners, list) or not winners:
             continue
@@ -124,6 +128,7 @@ def audit(snapshot: Path, registry: Path, max_events=2500) -> dict:
     return {
         "status": "PASS", "sample_origin": "real_news_" + snapshot.stem.split(".")[0] + "_baseline_2026_11",
         "historical_not_new_leads": True,
+        "sampling": "seeded_uniform_publications_with_awarded_suppliers",
         "source_events_unchanged": True, "no_auto_exclusion_applied": True,
         "real_supplier_records_passed_through_daily_hook": True,
         "duration_seconds": elapsed, **result,
