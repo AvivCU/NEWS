@@ -1,4 +1,4 @@
-# NEWS / Rosario — מאגר פסילה TASE
+# NEWS / Rosario — שכבת הגנה TASE: מניות לפסילה, אג״ח להתראה
 
 **Status (2026-11-23): REVIEW REQUIRED.** The read-only GitHub smoke and independent 17-company live acceptance tests have both passed using the new credential; the PR remains unmerged and no official snapshot has been committed. The committed JSON intentionally contains **zero companies**, with run_status=failed. The real-data smoke test has successfully built the registry, but the snapshot intentionally stays **temporary inside GitHub Actions**. The committed placeholder is not a working production exclusion list. An approved private distribution/storage mechanism must be chosen before Rosario agents can consume it.
 
@@ -8,10 +8,11 @@ One public data file: **data/latest/tase_registered_securities.json** (root meta
 
 | Lookup outcome | Required downstream action |
 | --- | --- |
-| **ברשימה**, auto_disqualify=true | Exclude immediately with reason "נפסלה – ציבורית/אג"ח"; cite registry URL, security IDs and last_updated; save a web search |
-| **ברשימה**, auto_disqualify=false | Name-only match or contradictory identifiers: manual verification; never automatic exclusion |
-| **לא ברשימה** | Continue existing public/private checks; NOT proof of a private company |
-| **לא ניתן לקבוע** | File missing, corrupt, older than ten days, source data stale or never fetched; continue existing checks and include an unavailable warning in the scan report |
+| **Confirmed publicly traded shares** (exact matching corporate ID, no conflicting name) | **Reject / remove from lead lists**, with TASE evidence and audit note. A company with both shares and bonds is rejected due to shares. |
+| **Confirmed corporate bonds only** (exact matching corporate ID, no conflicting name) | **Keep company**; mark as `bond_warning` and `scoring_signal="strong_negative"`. Existing lead scoring controls the numerical penalty; this safety layer MUST NOT invent or overwrite a numeric score. |
+| **Name-only match, mismatched ID/name, ambiguous issuer** | Manual confirmation; no automatic rejection and no confirmed bond-scoring penalty. |
+| **Not found** | Continue existing checks. No inference that company is private or has never issued corporate bonds. |
+| **Registry missing/stale/error** | Manual review / unavailable alert; never automatic rejection; preserve original lead. |
 
 Name-only lookup accepts the official short company name **or** the full registered Hebrew/English `companyFullName`, normalizing punctuation and Hebrew בע"מ/בעמ. It returns the observed `type` but **always** sets `requires_review=true` and `auto_disqualify=false`. In case the same input name resolves to multiple issuers, `type="לא חד-משמעי"` and no collective share/bond status is inferred. Fuzzy/substring names are not claimed exact.
 
@@ -19,7 +20,7 @@ Name-only lookup accepts the official short company name **or** the full registe
 
 **Name-only acceptance (latest run 45153674425):** 20/20 real company-name queries matched expected corporate IDs and returned stock/bond type, including shortened and full registered company names; 25/25 deterministic unit tests passed; 3 known banks had both share and bond records. `RNEWS_TASE_2026` is the sole workflow secret used.
 
-Only an unambiguous exact 9-digit corporate-ID match can authorize auto-disqualification. Exact normalized names can return matches but require review. Similar/fuzzy names never auto-disqualify. If the input company name conflicts with a matching ID, review is required.
+Only an unambiguous exact 9-digit corporate-ID match **to equity securities** can authorize auto-disqualification. Exact matching corporate bonds without equity produce an alert only. Exact normalized names can return matches but require review. Similar/fuzzy names never auto-disqualify. If the input company name conflicts with a matching ID, review is required.
 
 ## Official sources and crucial limitation
 
@@ -37,7 +38,7 @@ Official site references:
 
 **Verified coverage gap (Nov 23 live run):** the official company list contains **693** issuers, while **661** issuers had at least one securely classified observed share/bond; **32** official-list issuers therefore lack a positive share/bond classification in this snapshot. There are additionally **42 unlinked security observations**. These require further investigation and must not be treated as private companies or no-bond evidence.
 
-**Important:** The date-based trade list is a union of recently *traded* securities, not a complete list of all *registered* securities. It can establish reliable issuer-linked **positives** but does not prove a company has no bonds/shares, particularly suspended or illiquid securities. Do not upgrade the coverage to exhaustive without verifying a full official active-listing export or endpoint. No fake source results are created.
+**Important for the business use case:** “already issued a bond” is a historical question. The date-based trade list confirms only observed recently traded bonds; it CANNOT rule out historical debt issuance, matured/retired bonds, suspended or illiquid series. Never claim that a company has never issued bonds. The date-based trade list is a union of recently *traded* securities, not a complete list of all *registered* securities. It can establish reliable issuer-linked **positives** but does not prove a company has no bonds/shares, particularly suspended or illiquid securities. Do not upgrade the coverage to exhaustive without verifying a full official active-listing export or endpoint. No fake source results are created.
 
 Official Data Hub access may require an application, subscription/approval and adherence to use/redistribution terms. No bot protection bypass, browser automation or alternative unlicensed source is attempted. Any 401/403/429 stops immediately.
 
@@ -81,7 +82,7 @@ The manual file is tagged **operator-attested, not independently verified**. Do 
 
 **Opt-in post-processing, never an upstream filter:** `tase_procurement_screen.py` consumes an existing procurement event JSON and an authorized, current TASE JSON snapshot, creates a **different** output file `procurement_events_tase_review.json`. It appends an advisory `tase_screen` section to each event with each supplier's listing evidence and `tase_enrichment` root summary. The original events file, event IDs, publication IDs, change counts and event order remain unchanged. The tool has no network, email, GitHub write, Monday call or TASE secret access. Its import has no side effects.
 
-**Supplier mapping:** NEWS `winners` are strings encoded as `"מספר חפ ספק|שם ספק"`; every supplier is evaluated separately. An exact 9-digit corporate-ID match to official listed stock or bond can yield an *advisory* positive `all_winners_exact_id_match`. A name-only match requires review; mismatched corporate ID versus name requires review; an unlisted/unknown/ambiguous ID does not qualify for exclusion. Multiple winners: the event-level flag is true **only if every supplier** has a reliable exact-ID match. It never drops events, even when every supplier is listed.
+**Supplier mapping:** NEWS `winners` are strings encoded as `"מספר חפ ספק|שם ספק"`; every supplier is evaluated separately. An exact 9-digit corporate-ID match to official traded **shares** can yield an *advisory* positive `all_winners_exact_id_match`; corporate-bond-only matches produce `bond_alert`, never auto-exclusion. A name-only match requires review; mismatched corporate ID versus name requires review; an unlisted/unknown/ambiguous ID does not qualify for exclusion. Multiple winners: the event-level equity-exclusion flag is true **only if every supplier** has a reliable exact-ID match to shares. It never drops events, even when every supplier is listed.
 
 **Fail-open for government procurement, fail-closed for exclusions:** a missing, stale, corrupt or unauthorized TASE registry yields `tase_enrichment.status="unavailable"`, supplier classifications `לא ניתן לקבוע`, and **zero** automatic positive exclusions. The procurement event data still passes through untouched. If the event input itself is malformed, the sidecar exits nonzero without overwriting the old output.
 
@@ -107,16 +108,34 @@ python -m unittest discover -s tase_tests -p 'test_*.py' -v
 
 **Real-data validation:** `tase_tests/real_news_baseline_audit.py` samples actual previously published government **tender** winners from committed `state/procurement_snapshots/tenders.json.gz`, then checks those against a freshly fetched official TASE snapshot on the same temporary runner. This is deliberately marked **historical baseline sampling** and is not misreported as new leads. The audit checks that no government event, winner, event ID, or ordering is removed; no name-only match becomes auto-exclusion; and the source remains unmodified. Only aggregate diagnostics are logged.
 
+## Exact post-addition contract — three destinations
+
+Reusable read-only CLI: `tase_company_guard.py`. It accepts `--destination` as `leads`, `watchlist` or `owned_company_watchlist`, plus company name, optional 9-digit corporate ID, and `--registry` pointing to an *authorized private snapshot*. It emits structured `action`:
+- `reject_public_equity`: remove/reject the created company record **only after verifying its exact identity**, preserve an audit trace and evidence.
+- `keep_with_bond_warning`: keep the record but flag strong negative scoring; the existing Rosario scoring agent determines numeric penalty.
+- `manual_review`: missing/stale data, name-only match or conflicting identities.
+- `continue_existing_checks`: not found; **not evidence that the company is private**.
+
+This CLI does not talk to Monday and does not itself alter any board or score. Production Rosario integration must be attached to EVERY company-added event (lead, company in monitoring, owned company in monitoring) with idempotency, rollback/audit, and a secure licensed registry consumer. A poller/trigger must cover direct/manual additions as well as scheduled bot insertions. Testing in public NEWS cannot prove Monday event coverage.
+
+```bash
+python tase_company_guard.py --registry /secure/tase.json \
+  --destination leads --name "חברה לדוגמה" --corporate-id 512345678
+```
+
 ## Rosario integration contract — NOT wired in this public repository
 
-Before every web lookup and before candidate insertion:
+After each company insertion and before final acceptance in any of the three boards:
 
 ~~~python
 from tase_registry import lookup
 result = lookup(name=candidate_name, corporate_id=candidate_hp)
 if result["status"] == "ברשימה" and result["auto_disqualify"]:
-    # Reject: public shares / corporate bond, include source and last_updated.
+    # Reject only confirmed traded shares, include source and last_updated.
     reject_candidate(result)
+elif result.get("corporate_bond_confirmed"):
+    # Keep candidate but flag strong negative scoring due to known corporate bonds.
+    flag_existing_bond_underwriter_relationship_for_review(result)
 else:
     # Continue existing checks for ownership, IPO intentions, government bodies.
     # Log registry unavailability if status == "לא ניתן לקבוע".
