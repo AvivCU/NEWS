@@ -1,0 +1,76 @@
+name: TASE official exclusion registry
+
+on:
+  pull_request:
+    paths:
+      - tase_registry.py
+      - tests/test_tase_registry.py
+      - docs/tase_registry.md
+      - .github/workflows/tase-registry-weekly.yml
+      - data/latest/tase_registered_securities.json
+  push:
+    branches: [main]
+    paths:
+      - tase_registry.py
+      - tests/test_tase_registry.py
+      - .github/workflows/tase-registry-weekly.yml
+  schedule:
+    # Friday 08:17 UTC = 10:17 Israel winter, 11:17 Israel summer.
+    # Scheduled updates are prior to Rosario's Saturday/Sunday lead workflows.
+    - cron: '17 8 * * 5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tase-registry-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate registry code without secret or outbound requests
+        run: python -m unittest discover -s tests -p 'test_tase_registry.py' -v
+
+  official-weekly-refresh:
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    needs: offline-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Read ONLY approved TASE DataWise endpoints
+        id: official
+        continue-on-error: true
+        env:
+          TASE_API_KEY: ${{ secrets.TASE_API_KEY }}
+        run: python tase_registry.py refresh --lookback 28
+      - name: Persist official success or safe failure status
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/latest/tase_registered_securities.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(tase): update official exclusion registry [skip ci]"
+            git push
+          fi
+      - name: Surface error if official source failed
+        if: steps.official.outcome != 'success'
+        run: |
+          echo "::error::Official TASE refresh failed; no new snapshot was fabricated. Check workflow status and TASE_API_KEY."
+          exit 1
