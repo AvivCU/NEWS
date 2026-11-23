@@ -85,7 +85,7 @@ jobs:
         id: official
         continue-on-error: true
         env:
-          TASE_API_KEY: ${{ secrets.TASE_API_KEY }}
+          TASE_API_KEY: ${{ secrets.RNEWS_TASE_2026 }}
         run: python tase_registry.py refresh --lookback 28
       - name: Persist official success or safe failure status
         if: always()
