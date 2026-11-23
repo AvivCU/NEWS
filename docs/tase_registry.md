@@ -1,6 +1,6 @@
 # NEWS / Rosario — מאגר פסילה TASE
 
-**Status (2026-11-23): REVIEW REQUIRED.** The read-only GitHub smoke test successfully fetched and parsed live official TASE API responses using the new credential; the PR remains unmerged and no official snapshot has been committed. The committed JSON intentionally contains **zero companies**, with run_status=failed. The real-data smoke test has successfully built the registry, but the snapshot intentionally stays **temporary inside GitHub Actions**. The committed placeholder is not a working production exclusion list. An approved private distribution/storage mechanism must be chosen before Rosario agents can consume it.
+**Status (2026-11-23): REVIEW REQUIRED.** The read-only GitHub smoke and independent 17-company live acceptance tests have both passed using the new credential; the PR remains unmerged and no official snapshot has been committed. The committed JSON intentionally contains **zero companies**, with run_status=failed. The real-data smoke test has successfully built the registry, but the snapshot intentionally stays **temporary inside GitHub Actions**. The committed placeholder is not a working production exclusion list. An approved private distribution/storage mechanism must be chosen before Rosario agents can consume it.
 
 ## What the module does
 
@@ -92,7 +92,7 @@ Other Rosario exclusions (subsidiaries >50% owned by public companies, IPO plans
 - [x] Unit tests: 10 synthetic positives (shares, bonds, both), 10 synthetic negatives, mismatched ID/name, similar names, stale/missing/corrupt file, unknown classification, blocked API behavior.
 - [x] Missing key -> failed status, no fabricated companies, last successful snapshot preserved after subsequent failures.
 - [x] First real authenticated TASE fetch succeeded on 2026-11-23: 693 official companies, 2,256 observed securities, 1,563 classified rows, 663 linked issuers; source as of 2026-11-20 (read-only workflow).
-- [ ] Independent real listed-company and bond-only checks added to read-only smoke test; mark verified only after successful live run.
+- [x] Independent live acceptance PASS: 17/17 known TASE-listed corporate IDs matched without ambiguity (including 2/2 bond-only), 10 synthetic negatives not auto-rejected, name-only forced review, stale data fails closed; run 45150020864 on 2026-11-23.
 - [ ] Ten **real** Rosario-watchlist private companies checked confidentially; not placed in NEWS.
 - [ ] Confirm coverage of suspended and illiquid securities, or retain caveat.
 - [ ] After manual merge, training agent confirms actual task usage; document results.
