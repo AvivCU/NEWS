@@ -65,11 +65,13 @@ jobs:
         run: |
           if [ -z "$TASE_API_KEY" ]; then
             echo "TASE shadow skipped: API credential unavailable"
+            python -c 'import json; from pathlib import Path; Path("tase_shadow_status.json").write_text(json.dumps({"stage":"unavailable","reason":"credential_not_configured","published":False,"source_events_unchanged":True})+"\\n")'
           else
             python tase_news_integration.py \
               --events procurement_events.json \
               --registry "$RUNNER_TEMP/news_tase_registry.json" \
-              --output "$RUNNER_TEMP/news_tase_review.json"
+              --output "$RUNNER_TEMP/news_tase_review.json" \
+              --status-output tase_shadow_status.json
           fi
       - name: Upload public status report
         if: always()
@@ -79,6 +81,7 @@ jobs:
           path: |
             procurement_daily_report.json
             procurement_events.json
+            tase_shadow_status.json
           retention-days: 14
 
 # verification run: repeat without re-downloading unchanged ZIPs
