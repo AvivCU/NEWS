@@ -1,0 +1,144 @@
+name: TASE official exclusion registry
+
+on:
+  pull_request:
+    paths:
+      - tase_registry.py
+      - tase_tests/**
+      - tase_procurement_screen.py
+      - tase_news_integration.py
+      - tase_company_guard.py
+      - .github/workflows/daily-procurement.yml
+      - tools/tase_live_acceptance.py
+      - docs/tase_registry.md
+      - .github/workflows/tase-registry-weekly.yml
+      - data/latest/tase_registered_securities.json
+  push:
+    branches: [main, feature/tase-exclusion-registry-20261123]
+    paths:
+      - tase_registry.py
+      - tase_tests/**
+      - tase_procurement_screen.py
+      - tase_news_integration.py
+      - .github/workflows/daily-procurement.yml
+      - tools/tase_live_acceptance.py
+      - .github/workflows/tase-registry-weekly.yml
+  schedule:
+    # Friday 08:17 UTC = 10:17 Israel winter, 11:17 Israel summer.
+    # Scheduled updates are prior to Rosario's Saturday/Sunday lead workflows.
+    - cron: '17 8 * * 5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tase-registry-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate registry code without secret or outbound requests
+        run: python -m unittest discover -s tase_tests -p 'test_*.py' -v
+
+  legacy-news-regression:
+    # The original daily procurement workflow is UNCHANGED. Its existing tests
+    # are also run here to guard against import/path or side-effect regressions.
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install existing NEWS XML dependency
+        run: python -m pip install lxml==6.0.2
+      - name: Run ALL original NEWS procurement tests unchanged
+        run: python -m unittest discover -s tests -v
+      - name: Verify NEWS core unchanged and daily integration is additive only
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          git diff --exit-code FETCH_HEAD HEAD -- daily_procurement.py procurement_delta.py gov_dataset_reader.py
+          python - <<'PY'
+          from pathlib import Path
+          from subprocess import check_output
+          before = check_output(["git", "show", "FETCH_HEAD:.github/workflows/daily-procurement.yml"]).decode("utf-8")
+          after = Path(".github/workflows/daily-procurement.yml").read_text(encoding="utf-8")
+          start = "      - name: Annotate NEW procurement events with official TASE status (shadow only)\n"
+          end = "      - name: Upload public status report\n"
+          assert after.count(start) == 1 and after.count(end) == 1
+          prefix, remainder = after.split(start, 1)
+          _, suffix = remainder.split(end, 1)
+          expected = before.replace("            procurement_events.json\n", "            procurement_events.json\n            tase_shadow_status.json\n")
+          assert prefix + end + suffix == expected, "NEWS workflow changed beyond additive shadow step and status artifact"
+          print("PASS: procurement core untouched; daily workflow contains only the optional shadow step")
+          PY
+
+  official-pr-smoke:
+    # Same-repository PR only. A read-only auth+parser test using the secret;
+    # NO raw securities are uploaded or committed to the public repository.
+    if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/tase-exclusion-registry-20261123')
+    needs: offline-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify official API authorization and full registry build (no public upload)
+        env:
+          TASE_API_KEY: ${{ secrets.RNEWS_TASE_2026 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TASE_API_KEY" ]; then
+            echo "::error::TASE_API_KEY missing in NEWS repository Secrets / Actions"
+            exit 2
+          fi
+          python tase_registry.py refresh --lookback 28 --output "$RUNNER_TEMP/tase_official_smoke.json"
+          python tase_registry.py stats --registry "$RUNNER_TEMP/tase_official_smoke.json"
+          python tools/tase_live_acceptance.py --registry "$RUNNER_TEMP/tase_official_smoke.json"
+          python tase_tests/live_procurement_shadow.py --registry "$RUNNER_TEMP/tase_official_smoke.json"
+          python tase_tests/full_live_name_audit.py --registry "$RUNNER_TEMP/tase_official_smoke.json"
+          python tase_tests/real_news_baseline_audit.py --registry "$RUNNER_TEMP/tase_official_smoke.json" --limit 1500
+
+  official-weekly-refresh:
+    # Never push, upload or persist TASE-licensed raw data in this public repo.
+    # A private storage integration needs its own licensing review and approval.
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    needs: offline-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify official weekly data and run acceptance (no public raw data)
+        env:
+          TASE_API_KEY: ${{ secrets.RNEWS_TASE_2026 }}
+        run: |
+          set -euo pipefail
+          python tase_registry.py refresh --lookback 28 --output "$RUNNER_TEMP/tase_weekly.json"
+          python tase_registry.py stats --registry "$RUNNER_TEMP/tase_weekly.json"
+          python tools/tase_live_acceptance.py --registry "$RUNNER_TEMP/tase_weekly.json"
