@@ -49,7 +49,13 @@ def main():
              "classification": classification, "count": count}
             for (code, main, detail, classification), count in counts.items()
         ]
-    print(json.dumps({"date": "2026-11-20", "sample_issuer_type_counts": results},
+    type_catalog = [
+        {"code": code, "main_type":main, "subtype":detail,
+         "classification": classify(main + " " + detail) or "not-classified"}
+        for code, (main, detail) in sorted(by_code.items())
+    ]
+    print(json.dumps({"date": "2026-11-20", "type_catalog": type_catalog,
+                      "sample_issuer_type_counts": results},
                      ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
