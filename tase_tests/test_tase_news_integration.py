@@ -146,5 +146,30 @@ class NewsPipelineTests(unittest.TestCase):
             self.assertFalse(dest.exists())
 
 
+    def test_workflow_missing_credential_writes_valid_status_json(self):
+        # Execute the actual shell-embedded Python fallback, not a reimplementation.
+        import shlex
+        import subprocess
+        import sys
+
+        workflow = (Path(__file__).resolve().parents[1] /
+                    ".github/workflows/daily-procurement.yml").read_text(encoding="utf-8")
+        fallback = [line.strip() for line in workflow.splitlines()
+                    if "credential_not_configured" in line]
+        self.assertEqual(len(fallback), 1)
+        cmd = shlex.split(fallback[0])
+        self.assertEqual(cmd[:2], ["python", "-c"])
+        with tempfile.TemporaryDirectory() as temp:
+            done = subprocess.run([sys.executable, "-c", cmd[2]],
+                                  cwd=temp, capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            status = json.loads((Path(temp) / "tase_shadow_status.json")
+                                .read_text(encoding="utf-8"))
+            self.assertEqual(status["stage"], "unavailable")
+            self.assertEqual(status["reason"], "credential_not_configured")
+            self.assertFalse(status["published"])
+            self.assertTrue(status["source_events_unchanged"])
+
+
 if __name__ == "__main__":
     unittest.main()
