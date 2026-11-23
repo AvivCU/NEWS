@@ -96,6 +96,7 @@ jobs:
           python tase_registry.py stats --registry "$RUNNER_TEMP/tase_official_smoke.json"
           python tools/tase_live_acceptance.py --registry "$RUNNER_TEMP/tase_official_smoke.json"
           python tase_tests/live_procurement_shadow.py --registry "$RUNNER_TEMP/tase_official_smoke.json"
+          python tase_tests/full_live_name_audit.py --registry "$RUNNER_TEMP/tase_official_smoke.json"
 
   official-weekly-refresh:
     # Never push, upload or persist TASE-licensed raw data in this public repo.
