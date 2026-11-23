@@ -112,14 +112,16 @@ def items(payload, section):
 
 
 def classify(label) -> str:
-    """Only official category labels; exclude government debt, funds and ETFs."""
+    """Conservative fallback only when the official four-digit type code is absent."""
     s = name_key(label)
     if not s:
         return ""
     forbidden = ("ממשלתי", "ממשלתיות", "מלווה קצר", "מקמ", "treasury",
                  "government", "sovereign", "etf", "קרן סל", "תעודת סל",
-                 "קרנות נאמנות", "mutual fund", "option", "אופציה", "זכות",
-                 "warrant", "index", "מדד")
+                 "תעודות סל", "קרנות נאמנות", "קרן חוץ", "קרן השקעה",
+                 "mutual fund", "fund", "option", "אופציה", "זכות",
+                 "warrant", "index", "מדד", "ניירות ערך מסחריים",
+                 "ני ע מסחריים", "commercial paper", "תעודות פקדון")
     if any(x in s for x in forbidden):
         return ""
     if any(x in s for x in ("אג ח קונצרני", "אג ח חברות", "אגח קונצרני",
@@ -127,11 +129,34 @@ def classify(label) -> str:
                             "איגרות חוב", "אגרות חוב", "corporate bond",
                             "convertible bond", "debenture")):
         return "אג\"ח"
-    if any(x in s for x in ("מניה רגילה", "מניות רגילות", "מניות",
+    if any(x in s for x in ("מניה", "מנית", "מניות",
                             "ordinary share", "common share",
                             "ordinary stock", "common stock", "shares")):
         return "מניה"
     return ""
+
+
+# The official Securities Types endpoint (verified 2026-11-23) uses numeric
+# securityFullTypeCode. Match the ISSUER's own security class, not words in an
+# ETF/fund name. Specifically 0104 is Leumi's traded stock, not a bond.
+# Exclude 0113 (closed mutual fund), 0504 (bond tracking certificate),
+# 0506 (deposit receipt), 0508 (commercial paper), 0512 (debt participation).
+NON_BOND_05_CODES = frozenset(("0504", "0506", "0508", "0512"))
+NON_SHARE_01_CODES = frozenset(("0113",))
+
+
+def classify_code(code, label="") -> str:
+    code = str(code or "").strip()
+    if re.fullmatch(r"[0-9]{4}", code):
+        if code.startswith("01") and code not in NON_SHARE_01_CODES:
+            return "מניה"
+        if code.startswith("03") or (
+                code.startswith("05") and code not in NON_BOND_05_CODES):
+            return "אג\"ח"
+        return ""
+    # Synthetic tests and verified operator exports may supply descriptive
+    # non-numeric categories, but never override an official 4-digit type code.
+    return classify(label)
 
 
 class TaseClient:
@@ -273,7 +298,7 @@ def build(data, at=None):
     for row in data["securities"]:
         sid = security_id(row.get("securityId"))
         code = str(row.get("securityFullTypeCode") or "").strip()
-        category = classify(types.get(code) or row.get("securityTypeDesc") or "")
+        category = classify_code(code, types.get(code) or row.get("securityTypeDesc") or "")
         if not category:
             excluded += 1
             continue
