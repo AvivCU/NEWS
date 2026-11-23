@@ -13,6 +13,12 @@ One public data file: **data/latest/tase_registered_securities.json** (root meta
 | **לא ברשימה** | Continue existing public/private checks; NOT proof of a private company |
 | **לא ניתן לקבוע** | File missing, corrupt, older than ten days, source data stale or never fetched; continue existing checks and include an unavailable warning in the scan report |
 
+Name-only lookup accepts the official short company name **or** the full registered Hebrew/English `companyFullName`, normalizing punctuation and Hebrew בע"מ/בעמ. It returns the observed `type` but **always** sets `requires_review=true` and `auto_disqualify=false`. In case the same input name resolves to multiple issuers, `type="לא חד-משמעי"` and no collective share/bond status is inferred. Fuzzy/substring names are not claimed exact.
+
+**Verified 2026-11-23 classification fix:** Use the TASE official four-digit `securityFullTypeCode` as primary truth (01xx stocks except 0113 fund; 03xx convertible bonds; 05xx corporate bonds except 0504 tracking certificate, 0506 deposit certificate, 0508 commercial paper and 0512 debt participation). The earlier text-only classifier missed stock code **0104** (Leumi), and could label tracking certificates/ETFs as shares or bonds. The corrected live run identifies Leumi, Hapoalim and Mizrahi-Tefahot as `שניהם`, while Electricity Corporation and Mizrahi-Tefahot Issuances are `אג"ח` in observed TASE records.
+
+**Name-only acceptance (latest run 45153674425):** 20/20 real company-name queries matched expected corporate IDs and returned stock/bond type, including shortened and full registered company names; 25/25 deterministic unit tests passed; 3 known banks had both share and bond records. `RNEWS_TASE_2026` is the sole workflow secret used.
+
 Only an unambiguous exact 9-digit corporate-ID match can authorize auto-disqualification. Exact normalized names can return matches but require review. Similar/fuzzy names never auto-disqualify. If the input company name conflicts with a matching ID, review is required.
 
 ## Official sources and crucial limitation
@@ -29,7 +35,7 @@ Official site references:
 - https://market.tase.co.il/he/market_data/tase-companies/public
 - https://market.tase.co.il/he/market_data/securities/info/all?cl1=0&dType=1
 
-**Verified coverage gap (Nov 23 live run):** the official company list contains **693** issuers, while **663** issuers had at least one securely classified observed share/bond; **30** official-list issuers therefore lack a positive share/bond classification in this snapshot. There are additionally **42 unlinked security observations**. These require further investigation and must not be treated as private companies or no-bond evidence.
+**Verified coverage gap (Nov 23 live run):** the official company list contains **693** issuers, while **661** issuers had at least one securely classified observed share/bond; **32** official-list issuers therefore lack a positive share/bond classification in this snapshot. There are additionally **42 unlinked security observations**. These require further investigation and must not be treated as private companies or no-bond evidence.
 
 **Important:** The date-based trade list is a union of recently *traded* securities, not a complete list of all *registered* securities. It can establish reliable issuer-linked **positives** but does not prove a company has no bonds/shares, particularly suspended or illiquid securities. Do not upgrade the coverage to exhaustive without verifying a full official active-listing export or endpoint. No fake source results are created.
 
@@ -93,7 +99,7 @@ Other Rosario exclusions (subsidiaries >50% owned by public companies, IPO plans
 
 - [x] Unit tests: 10 synthetic positives (shares, bonds, both), 10 synthetic negatives, mismatched ID/name, similar names, stale/missing/corrupt file, unknown classification, blocked API behavior.
 - [x] Missing key -> failed status, no fabricated companies, last successful snapshot preserved after subsequent failures.
-- [x] First real authenticated TASE fetch succeeded on 2026-11-23: 693 official companies, 2,256 observed securities, 1,563 classified rows, 663 linked issuers; source as of 2026-11-20 (read-only workflow).
+- [x] First real authenticated TASE fetch succeeded on 2026-11-23: 693 official companies, 2,256 observed securities, 1,505 correctly classified share/bond rows, 661 linked issuers; source as of 2026-11-20 (read-only workflow).
 - [x] Independent live acceptance PASS: 17/17 known TASE-listed corporate IDs matched without ambiguity (including 2/2 bond-only), 10 synthetic negatives not auto-rejected, name-only forced review, stale data fails closed; run 45150020864 on 2026-11-23.
 - [ ] Ten **real** Rosario-watchlist private companies checked confidentially; not placed in NEWS.
 - [ ] Confirm coverage of suspended and illiquid securities, or retain caveat.
