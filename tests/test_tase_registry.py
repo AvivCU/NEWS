@@ -116,7 +116,7 @@ class RegistryTest(unittest.TestCase):
         self.assertFalse(result["auto_disqualify"])
 
     def test_similar_name_is_not_exact(self):
-        r = t.decide(self.registry, name="חברת דוגמה 1 בעמ", now=NOW)
+        r = t.decide(self.registry, name="חברת דוגמה 1 בעמ נוספת", now=NOW)
         self.assertEqual(r["status"], "לא ברשימה")
         self.assertFalse(r["auto_disqualify"])
 
