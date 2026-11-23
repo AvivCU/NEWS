@@ -50,3 +50,9 @@ This public repository contains **no private Rosario watchlists, Monday data or 
 - The event limit is raised to 10,000 **with fail-safe refusal to advance state** if exceeded, instead of silently dropping changes.
 - Unit tests exercise old-tender newly assigned winners, amount increases, contract extensions, formatting-only edits, legacy migration and unchanged re-runs. Actual future monthly-version differences have not yet occurred, so real new event precision remains to be validated.
 - Production Rosario Feeds and private Monday boards remain unchanged.
+
+## TASE official company exclusion registry (proposed)
+
+- Implementation: [tase_registry.py](tase_registry.py), weekly workflow: [.github/workflows/tase-registry-weekly.yml](.github/workflows/tase-registry-weekly.yml), one output: [data/latest/tase_registered_securities.json](data/latest/tase_registered_securities.json).
+- [Setup, limitations, safety, readiness checklist, Rosario integration contract](docs/tase_registry.md).
+- **Not live-validated yet:** initial data file deliberately has zero rows / failed status until an authorized official TASE data fetch succeeds. The dated-trade API supports positive exclusion evidence, not a complete list of registered securities. Requires a TASE API key and review of usage rights. No private Rosario/Monday connection.
