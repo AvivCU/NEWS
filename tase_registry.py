@@ -463,11 +463,22 @@ def _decide_core(obj, name="", corporate_id="", now=None, *, validation=None, ca
         }
     types = {r["security_type"] for r in matches}
     category = "שניהם" if len(types) == 2 else next(iter(types))
-    auto = method == "exact_corporate_id" and not review
+    verified = method == "exact_corporate_id" and not review
+    # Equity listing excludes. A corporate bond alone reduces priority,
+    # but does NOT disqualify a prospect from advisory/M&A coverage.
+    has_equity = "מניה" in types
+    has_bonds = 'אג"ח' in types
+    auto = verified and has_equity
+    bond_alert = verified and has_bonds
     return {
         "status": "ברשימה", "type": category, "auto_disqualify": auto,
         "requires_review": review, "match_method": method,
-        "reason": "נפסלה – ציבורית/אג\"ח" if auto else "התאמת שם/מזהה לא חד-משמעית – דורש בדיקה",
+        "equity_listed_confirmed": bool(auto),
+        "corporate_bond_confirmed": bool(bond_alert),
+        "scoring_signal": "strong_negative" if bond_alert else None,
+        "reason": ("נפסלה – מניות החברה נסחרות בבורסה" if auto else
+                   'התראת אג"ח קונצרני – להפחית ניקוד, לא לפסול' if bond_alert else
+                   "התאמת שם/מזהה לא חד-משמעית – דורש בדיקה"),
         "name_he": matches[0]["name_he"], "name_en": matches[0]["name_en"],
         "name_full_he": matches[0]["name_full_he"],
         "name_full_en": matches[0]["name_full_en"],
