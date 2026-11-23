@@ -62,6 +62,9 @@ def _lookup_result(result):
         "requires_review": bool(result.get("requires_review", False)),
         "reason": result.get("reason"),
         "match_method": result.get("match_method"),
+        "equity_listed_confirmed": bool(result.get("equity_listed_confirmed")),
+        "corporate_bond_confirmed": bool(result.get("corporate_bond_confirmed")),
+        "scoring_signal": result.get("scoring_signal"),
     }
 
 
@@ -78,6 +81,8 @@ def enrich(data: dict, registry: dict) -> dict:
         "winners_total": 0, "winners_exact_id_match": 0,
         "winners_name_only_review": 0, "winners_not_found": 0,
         "winners_unavailable": 0, "winners_other_review": 0,
+        "winners_bond_only_confirmed": 0,
+        "winners_equity_and_bonds_confirmed": 0,
     }
     for label, group in result["kinds"].items():
         if not isinstance(group, dict) or not isinstance(group.get("events"), list):
@@ -106,6 +111,10 @@ def enrich(data: dict, registry: dict) -> dict:
                     counters["winners_not_found"] += 1
                 else:
                     counters["winners_other_review"] += 1
+                if decision.get("corporate_bond_confirmed") and not decision.get("auto_disqualify"):
+                    counters["winners_bond_only_confirmed"] += 1
+                elif decision.get("corporate_bond_confirmed") and decision.get("auto_disqualify"):
+                    counters["winners_equity_and_bonds_confirmed"] += 1
                 checked.append({
                     "input_corporate_id": corporate_id,
                     "input_name": company_name,
@@ -131,6 +140,7 @@ def enrich(data: dict, registry: dict) -> dict:
                 # Advisory annotation ONLY. Never suppress upstream events.
                 "all_winners_exact_id_match": all_by_id,
                 "requires_followup": not all_by_id,
+                "bond_alert": any(w["corporate_bond_confirmed"] for w in checked),
                 "winners": checked,
             }
 
