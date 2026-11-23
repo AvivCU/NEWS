@@ -56,3 +56,16 @@ This public repository contains **no private Rosario watchlists, Monday data or 
 - Implementation: [tase_registry.py](tase_registry.py), weekly workflow: [.github/workflows/tase-registry-weekly.yml](.github/workflows/tase-registry-weekly.yml), one output: [data/latest/tase_registered_securities.json](data/latest/tase_registered_securities.json).
 - [Setup, limitations, safety, readiness checklist, Rosario integration contract](docs/tase_registry.md).
 - **Not live-validated yet:** initial data file deliberately has zero rows / failed status until an authorized official TASE data fetch succeeds. The dated-trade API supports positive exclusion evidence, not a complete list of registered securities. Requires a TASE API key and review of usage rights. No private Rosario/Monday connection.
+
+
+## Optional TASE public-securities screen (isolated; not production-linked)
+
+The official TASE DataWise Securities - Basic API can identify companies with **observed TASE-traded shares and/or corporate bonds**. The safe, opt-in NEWS sidecar is documented in [`docs/tase_registry.md`](docs/tase_registry.md).
+
+- `tase_registry.py`: builds a verified TASE lookup registry from official endpoints, using the `RNEWS_TASE_2026` GitHub secret in **TASE-only** workflows. Full raw data stays inside the ephemeral GitHub runner.
+- `tase_procurement_screen.py`: **optional post-processing only**. Reads the existing `procurement_events.json` plus an authorized *private* TASE snapshot and writes a **new** `procurement_events_tase_review.json`. Never edits, filters, drops, reorders or blocks the government procurement feed.
+- Missing/stale TASE data → status `unavailable`, keep all original events. Name-only matches → `requires_review`; only unique exact corporate-ID matches can be flagged as known listed, and even those are informational annotations, not destructive deletions.
+- TASE tests live in `tase_tests/`, **outside the original `tests/` suite** invoked by the daily procurement monitor. No change to its code, state snapshots or schedule.
+- The public NEWS repository does **not** contain the private Rosario Feeds scanner or Monday workflows, so deployment into that production system is not implied by this PR.
+- Until a licensed, access-controlled private registry destination is agreed, the real TASE data is discarded at the end of each validation job; no production-ready public exclusion list is available. **This is a draft PR, not merged.**
+
