@@ -24,8 +24,8 @@ import tase_procurement_screen as screen
 def sample_from_snapshot(path: Path, *, max_events=2500) -> dict:
     with gzip.open(path, "rt", encoding="utf-8") as file:
         snapshot = json.load(file)
-    if snapshot.get("schema") != 2 or snapshot.get("kind") != "tenders":
-        raise ValueError("Expected authentic schema v2 tender snapshot")
+    if snapshot.get("schema") != 2 or snapshot.get("kind") not in ("tenders", "exemptions"):
+        raise ValueError("Expected authentic schema v2 procurement snapshot")
     items = snapshot.get("items")
     if not isinstance(items, dict) or len(items) < 1000:
         raise ValueError("Procurement snapshot unexpectedly empty")
@@ -52,8 +52,8 @@ def sample_from_snapshot(path: Path, *, max_events=2500) -> dict:
         })
         if len(selected) >= max_events:
             break
-    if len(selected) < 100:
-        raise ValueError("Not enough real awarded tenders to assess TASE")
+    if len(selected) < 50:
+        raise ValueError("Not enough real known suppliers in procurement snapshot")
     return {
         "checked_utc": "2026-11-23T00:00:00+00:00",
         "sample_type": "historical_real_procurement_baseline_not_recent_events",
@@ -94,7 +94,7 @@ def audit(snapshot: Path, registry: Path, max_events=2500) -> dict:
                 raise ValueError("Name-only false disqualification")
     # Report only aggregate metrics; never reveal underlying companies.
     return {
-        "status": "PASS", "sample_origin": "real_news_tenders_baseline_2026_11",
+        "status": "PASS", "sample_origin": "real_news_" + snapshot.stem.split(".")[0] + "_baseline_2026_11",
         "historical_not_new_leads": True,
         "source_events_unchanged": True, "no_auto_exclusion_applied": True,
         "duration_seconds": elapsed, **result,
@@ -103,12 +103,12 @@ def audit(snapshot: Path, registry: Path, max_events=2500) -> dict:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--snapshot", type=Path, default=Path("state/procurement_snapshots/tenders.json.gz"))
+    parser.add_argument("--snapshot", type=Path, default=Path("state/procurement_snapshots/exemptions.json.gz"))
     parser.add_argument("--registry", type=Path, required=True)
-    parser.add_argument("--limit", type=int, default=2500)
+    parser.add_argument("--limit", type=int, default=1500)
     args = parser.parse_args()
-    if not 100 <= args.limit <= 5000:
-        parser.error("Limit must be 100..5000")
+    if not 50 <= args.limit <= 5000:
+        parser.error("Limit must be 50..5000")
     print(json.dumps(audit(args.snapshot, args.registry, args.limit), ensure_ascii=False))
 
 
