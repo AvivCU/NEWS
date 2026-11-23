@@ -13,12 +13,14 @@ import copy
 import gzip
 import json
 from pathlib import Path
+import tempfile
 import sys
 from time import perf_counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import tase_registry
 import tase_procurement_screen as screen
+import tase_news_integration as news_stage
 
 
 def sample_from_snapshot(path: Path, *, max_events=2500) -> dict:
@@ -92,11 +94,37 @@ def audit(snapshot: Path, registry: Path, max_events=2500) -> dict:
         for winner in classified["winners"]:
             if winner["auto_disqualify"] and winner["match_method"] != "exact_corporate_id":
                 raise ValueError("Name-only false disqualification")
+    # Exercise the EXACT daily NEWS hook end-to-end with real historical
+    # supplier records, an authenticated TASE snapshot and ephemeral files.
+    # Simulate the already-completed TASE refresh using the fetched snapshot;
+    # do not waste another 28 API calls for the same data.
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        src, dst, intermediate = (root/x for x in ("news_events.json", "screened_events.json", "tase.json"))
+        src.write_text(json.dumps(original, ensure_ascii=False), encoding="utf-8")
+        before = src.read_bytes()
+        def inject_live_snapshot(target):
+            tase_registry.atomic_save(target, tase_registry.read(registry))
+            return 0
+        hook_result = news_stage.run(src, dst, intermediate, download=inject_live_snapshot)
+        if hook_result["stage"] != "analyzed" or not dst.exists():
+            raise ValueError("NEWS daily hook failed against real supplier sample")
+        if src.read_bytes() != before:
+            raise ValueError("NEWS daily hook modified real input records")
+        saved = json.loads(dst.read_text(encoding="utf-8"))
+        if saved["tase_enrichment"]["summary"] != result:
+            raise ValueError("NEWS hook and direct TASE classifier diverged")
+        original_ids = [e["event_id"] for e in original["kinds"]["tenders"]["events"]]
+        screened_ids = [e["event_id"] for e in saved["kinds"]["tenders"]["events"]]
+        if screened_ids != original_ids:
+            raise ValueError("NEWS daily hook changed order or identifiers")
+
     # Report only aggregate metrics; never reveal underlying companies.
     return {
         "status": "PASS", "sample_origin": "real_news_" + snapshot.stem.split(".")[0] + "_baseline_2026_11",
         "historical_not_new_leads": True,
         "source_events_unchanged": True, "no_auto_exclusion_applied": True,
+        "real_supplier_records_passed_through_daily_hook": True,
         "duration_seconds": elapsed, **result,
     }
 
