@@ -51,19 +51,20 @@ This public repository contains **no private Rosario watchlists, Monday data or 
 - Unit tests exercise old-tender newly assigned winners, amount increases, contract extensions, formatting-only edits, legacy migration and unchanged re-runs. Actual future monthly-version differences have not yet occurred, so real new event precision remains to be validated.
 - Production Rosario Feeds and private Monday boards remain unchanged.
 
-## TASE official company exclusion registry (proposed)
+## TASE official company safeguard (proposed)
 
-- Implementation: [tase_registry.py](tase_registry.py), weekly workflow: [.github/workflows/tase-registry-weekly.yml](.github/workflows/tase-registry-weekly.yml), one output: [data/latest/tase_registered_securities.json](data/latest/tase_registered_securities.json).
+- Implementation: [tase_registry.py](tase_registry.py), weekly workflow: [.github/workflows/tase-registry-weekly.yml](.github/workflows/tase-registry-weekly.yml), one intentionally empty placeholder: [data/latest/tase_registered_securities.json](data/latest/tase_registered_securities.json).
 - [Setup, limitations, safety, readiness checklist, Rosario integration contract](docs/tase_registry.md).
 - **Not live-validated yet:** initial data file deliberately has zero rows / failed status until an authorized official TASE data fetch succeeds. The dated-trade API supports positive exclusion evidence, not a complete list of registered securities. Requires a TASE API key and review of usage rights. No private Rosario/Monday connection.
 
 
-## Optional TASE public-securities screen (isolated; not production-linked)
+## Optional TASE traded-equity rejection and bond-issuance warning
 
 The official TASE DataWise Securities - Basic API can identify companies with **observed TASE-traded shares and/or corporate bonds**. The safe, opt-in NEWS sidecar is documented in [`docs/tase_registry.md`](docs/tase_registry.md).
 
 - `tase_registry.py`: builds a verified TASE lookup registry from official endpoints, using the `RNEWS_TASE_2026` GitHub secret in **TASE-only** workflows. Full raw data stays inside the ephemeral GitHub runner.
 - `tase_procurement_screen.py`: **advisory enrichment only**. Reads the existing `procurement_events.json` plus an authorized temporary TASE snapshot and writes a **different** report. Never edits, filters, drops, reorders or blocks the government procurement feed.
+- `tase_company_guard.py`: reusable company-entry post-check for `leads`, `watchlist`, `owned_company_watchlist`. Exact corporate-ID confirmed shares → reject; exact corporate-ID confirmed bonds alone → **keep**, alert `strong_negative` for the existing scoring mechanism (no invented numeric penalty). Name-only → manual review. The private Rosario board triggers are **not** connected here.
 - `tase_news_integration.py`: integrated **after** `daily_procurement.py` in the original daily workflow (this addition is on the **unmerged PR**). It first checks whether there are any new procurement events. If none, **zero extra TASE requests**. If yes, it refreshes official TASE data and evaluates actual awarded suppliers, keeping the registry and enriched results only inside GitHub's private ephemeral runner. Errors are non-blocking; the original public reports and snapshot update are unchanged. No enriched per-company TASE result is uploaded to GitHub artifacts.
 - Missing/stale TASE data → status `unavailable`, keep all original events. Name-only matches → `requires_review`; only unique exact corporate-ID matches can be flagged as known listed, and even those are informational annotations, not destructive deletions.
 - TASE tests live in `tase_tests/`, **outside the original `tests/` suite** invoked by the daily procurement monitor. The only proposed change to the daily workflow is an independent, non-blocking post-processing step; collection code, state snapshots, artifacts and schedule are unchanged.
