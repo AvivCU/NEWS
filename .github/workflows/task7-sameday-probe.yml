@@ -1,0 +1,19 @@
+name: Task 7 same-day cutoff - independent live read-only probe
+on:
+  push:
+    branches:
+      - research/task7-sameday-cutoff-20261123
+    paths:
+      - "task7_same_day_public_probe.py"
+      - ".github/workflows/task7-sameday-probe.yml"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  public-rss-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run offline regression and live public RSS check
+        run: python task7_same_day_public_probe.py
