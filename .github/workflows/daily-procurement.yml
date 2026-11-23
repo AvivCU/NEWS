@@ -54,6 +54,23 @@ jobs:
               git push
             fi
           fi
+      - name: Annotate NEW procurement events with official TASE status (shadow only)
+        # No change to procurement_events.json, procurement state or public artifacts.
+        # Read-only classification only. If TASE/API fails, upstream reports remain.
+        if: success()
+        continue-on-error: true
+        timeout-minutes: 4
+        env:
+          TASE_API_KEY: ${{ secrets.RNEWS_TASE_2026 }}
+        run: |
+          if [ -z "$TASE_API_KEY" ]; then
+            echo "TASE shadow skipped: API credential unavailable"
+          else
+            python tase_news_integration.py \
+              --events procurement_events.json \
+              --registry "$RUNNER_TEMP/news_tase_registry.json" \
+              --output "$RUNNER_TEMP/news_tase_review.json"
+          fi
       - name: Upload public status report
         if: always()
         uses: actions/upload-artifact@v4
