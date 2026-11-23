@@ -93,8 +93,8 @@ def audit(obj):
     for corporate_id in KNOWN_LISTED_CORPORATE_IDS:
         result = decide(obj, corporate_id=corporate_id)
         if result["status"] == "ברשימה":
-            expected_equity = expected == "מניה" or expected == "שניהם"
-            expected_bonds = expected == 'אג"ח' or expected == "שניהם"
+            expected_equity = result["type"] in ("מניה", "שניהם")
+            expected_bonds = result["type"] in ('אג"ח', "שניהם")
             if result["auto_disqualify"] != expected_equity or result["requires_review"]:
                 raise ValueError("Verified equity decision diverges from expected")
             if bool(result.get("corporate_bond_confirmed")) != expected_bonds:
