@@ -122,3 +122,5 @@ if __name__=="__main__":
         (root/"safe").mkdir();test_safe(root/"safe")
     test_same_article_fields()
     print("PASS: 3 scenarios on real Git; no external writes")
+
+# Trigger isolated live GitHub Actions run.
