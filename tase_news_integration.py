@@ -33,7 +33,9 @@ def summary(events: dict) -> dict:
 
 
 def run(events: Path, output: Path, registry: Path, *,
-        download=tase.refresh) -> dict:
+        download=None) -> dict:
+    # Resolve at call time so real and test source adapters behave identically.
+    download = tase.refresh if download is None else download
     if output.resolve() in (events.resolve(), registry.resolve()):
         raise ValueError("Shadow output must not overwrite inputs")
     original = screen._load_events(events)
