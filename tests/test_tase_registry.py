@@ -98,6 +98,7 @@ class RegistryTest(unittest.TestCase):
         self.assertFalse(r["auto_disqualify"])
 
     def test_stale_exactly_ten_days_is_fresh(self):
+        self.registry["source_as_of"] = NOW.date().isoformat()
         r = t.decide(self.registry, corporate_id="510000000",
                      now=NOW + timedelta(days=10))
         self.assertEqual(r["status"], "ברשימה")
@@ -133,7 +134,7 @@ class RegistryTest(unittest.TestCase):
         reg = t.build(raw, at=NOW.isoformat())
         self.assertEqual(reg["diagnostics"]["conflicting_identifiers"], 1)
         got = t.decide(reg, corporate_id="510000000", now=NOW)
-        self.assertEqual(got["type"], "אג\"ח" if False else "מניה")
+        self.assertEqual(got["type"], "מניה")
 
     def test_unknown_types_and_government_debt_excluded(self):
         raw = sample()
