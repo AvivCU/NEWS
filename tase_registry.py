@@ -72,6 +72,28 @@ def name_key(value) -> str:
     return " ".join(re.findall(r"[a-z0-9\u05d0-\u05ea]+", s))
 
 
+def match_name_key(value) -> str:
+    """Normalize punctuation and Hebrew Ltd abbreviation, not distinct names."""
+    words = name_key(value).split()
+    out = []
+    i = 0
+    while i < len(words):
+        if i + 1 < len(words) and words[i] == "בע" and words[i + 1] == "מ":
+            out.append("בעמ")
+            i += 2
+        else:
+            out.append(words[i])
+            i += 1
+    return " ".join(out)
+
+
+NAME_FIELDS = ("name_he", "name_en", "name_full_he", "name_full_en")
+
+
+def exact_names(record):
+    return {match_name_key(record.get(field, "")) for field in NAME_FIELDS} - {""}
+
+
 def items(payload, section):
     if not isinstance(payload, dict):
         raise SourceError(f"{section}: invalid root")
@@ -221,11 +243,14 @@ def build(data, at=None):
             he[iid] = {
                 "issuer_id": iid, "corporate_id": corp_id(record.get("corporateId")),
                 "name_he": str(record["companyName"]).strip(), "name_en": "",
+                "name_full_he": str(record.get("companyFullName") or "").strip(),
+                "name_full_en": "",
             }
     for record in data["companies_en"]:
         iid = issuer_id(record.get("issuerId"))
         if iid in he:
             he[iid]["name_en"] = str(record.get("companyName") or "").strip()
+            he[iid]["name_full_en"] = str(record.get("companyFullName") or "").strip()
     if len(he) < 1:
         raise SourceError("No official companies in source")
     cid_owners = {}
@@ -340,7 +365,8 @@ def validate(obj, now=None, days=10, stale=True):
     if not rows:
         return False, "לא נמצאו שורות ממקור רשמי"
     seen = set()
-    mandatory = ("issuer_id", "corporate_id", "name_he", "name_en", "security_id",
+    mandatory = ("issuer_id", "corporate_id", "name_he", "name_en",
+                 "name_full_he", "name_full_en", "security_id",
                  "security_type", "type", "source_url", "updated_at")
     for row in rows:
         if not isinstance(row, dict) or any(k not in row for k in mandatory):
@@ -349,6 +375,8 @@ def validate(obj, now=None, days=10, stale=True):
                 (row["corporate_id"] and not corp_id(row["corporate_id"])) or
                 not isinstance(row["name_he"], str) or not row["name_he"].strip() or
                 not isinstance(row["name_en"], str) or
+                not isinstance(row["name_full_he"], str) or
+                not isinstance(row["name_full_en"], str) or
                 row["security_type"] not in ("מניה", "אג\"ח") or
                 row["type"] not in ("מניה", "אג\"ח", "שניהם") or
                 row["source_url"] != SECURITIES_URL):
@@ -371,19 +399,18 @@ def decide(obj, name="", corporate_id="", now=None):
         return {"status": "לא ברשימה", "auto_disqualify": False,
                 "requires_review": True, "reason": "ח.פ. לא תקין; יש לבדוק",
                 "last_updated": obj["last_updated"]}
-    normalized = name_key(name)
+    normalized = match_name_key(name)
     rows = obj["rows"]
     found_id = [r for r in rows if cid and r["corporate_id"] == cid]
-    found_name = [r for r in rows if normalized and normalized in (
-        name_key(r["name_he"]), name_key(r["name_en"]))]
+    found_name = [r for r in rows if normalized and normalized in exact_names(r)]
     if found_id:
         matches = found_id
         method = "exact_corporate_id"
         distinct_names = {name_key(r["name_he"]) for r in matches}
-        # Corporate ID is primary, but mismatched input name is a data-quality flag.
-        mismatched_name = bool(normalized and normalized not in {
-            name_key(r[k]) for r in matches for k in ("name_he", "name_en")
-        })
+        # Corporate ID is primary; disagreeing input name needs human review.
+        mismatched_name = bool(normalized and not any(
+            normalized in exact_names(r) for r in matches
+        ))
         review = len({r["issuer_id"] for r in matches}) != 1 or len(distinct_names) != 1 or mismatched_name
     elif found_name:
         matches, method, review = found_name, "exact_name_only", True
@@ -392,6 +419,16 @@ def decide(obj, name="", corporate_id="", now=None):
                 "requires_review": False,
                 "reason": "לא נמצא ברשימה; אין בכך הוכחה לחברה פרטית",
                 "last_updated": obj["last_updated"], "source": SECURITIES_URL}
+    issuers = {r["issuer_id"] for r in matches}
+    if len(issuers) != 1 and method == "exact_name_only":
+        return {
+            "status": "ברשימה", "type": "לא חד-משמעי",
+            "auto_disqualify": False, "requires_review": True,
+            "match_method": "ambiguous_exact_name",
+            "reason": "שם זהה מופיע אצל כמה מנפיקים; יש לאמת ח.פ. לפני סיווג",
+            "issuer_count": len(issuers), "last_updated": obj["last_updated"],
+            "source": SECURITIES_URL,
+        }
     types = {r["security_type"] for r in matches}
     category = "שניהם" if len(types) == 2 else next(iter(types))
     auto = method == "exact_corporate_id" and not review
@@ -400,6 +437,8 @@ def decide(obj, name="", corporate_id="", now=None):
         "requires_review": review, "match_method": method,
         "reason": "נפסלה – ציבורית/אג\"ח" if auto else "התאמת שם/מזהה לא חד-משמעית – דורש בדיקה",
         "name_he": matches[0]["name_he"], "name_en": matches[0]["name_en"],
+        "name_full_he": matches[0]["name_full_he"],
+        "name_full_en": matches[0]["name_full_en"],
         "corporate_id": matches[0]["corporate_id"],
         "issuer_ids": sorted({r["issuer_id"] for r in matches}),
         "security_ids": sorted({r["security_id"] for r in matches}),
