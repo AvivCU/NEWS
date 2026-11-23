@@ -12,6 +12,8 @@ BASE = "https://datawise.tase.co.il"
 ROUTES = {
     "companies-list": "/v1/basic-securities/companies-list",
     "securities-types": "/v1/basic-securities/securities-types",
+    # Control: official Basic Indices endpoint; no subscription assumed.
+    "indices-control": "/api/v2/basic-indices/indices-list",
 }
 
 
