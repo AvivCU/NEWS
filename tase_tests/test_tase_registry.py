@@ -60,7 +60,10 @@ class RegistryTest(unittest.TestCase):
             with self.subTest(i=i):
                 r = t.decide(self.registry, corporate_id=str(510000000 + i), now=NOW)
                 self.assertEqual(r["status"], "ברשימה")
-                self.assertTrue(r["auto_disqualify"])
+                self.assertEqual(r["auto_disqualify"], i not in (1, 2, 3))
+                self.assertEqual(r.get("corporate_bond_confirmed", False), i in (0, 1, 2, 3))
+                if i in (1, 2, 3):
+                    self.assertEqual(r["scoring_signal"], "strong_negative")
                 self.assertFalse(r["requires_review"])
         self.assertEqual(t.decide(self.registry, corporate_id="510000000", now=NOW)["type"], "שניהם")
         self.assertEqual(t.decide(self.registry, corporate_id="510000001", now=NOW)["type"], 'אג"ח')
