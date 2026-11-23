@@ -1,0 +1,19 @@
+name: Three-way state merge edge cases (research only)
+on:
+  push:
+    branches:
+      - research/pr68-three-way-merge-edges-20261123
+    paths:
+      - "threeway_merge_edges.py"
+      - ".github/workflows/threeway-merge-edges.yml"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  check-synthetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise edge cases using synthetic data
+        run: python threeway_merge_edges.py
