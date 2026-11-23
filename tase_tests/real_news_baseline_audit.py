@@ -59,7 +59,7 @@ def sample_from_snapshot(path: Path, *, max_events=2500) -> dict:
     return {
         "checked_utc": "2026-11-23T00:00:00+00:00",
         "sample_type": "historical_real_procurement_baseline_not_recent_events",
-        "kinds": {"tenders": {"status": "historical_sample",
+        "kinds": {snapshot["kind"]: {"status": "historical_sample",
                               "counts": {"baseline_sample": len(selected)},
                               "events": selected}},
     }
@@ -68,17 +68,18 @@ def sample_from_snapshot(path: Path, *, max_events=2500) -> dict:
 def audit(snapshot: Path, registry: Path, max_events=2500) -> dict:
     source = sample_from_snapshot(snapshot, max_events=max_events)
     original = copy.deepcopy(source)
+    kind = next(iter(source["kinds"]))
     clock = perf_counter()
     enriched = screen.enrich(source, tase_registry.read(registry))
     elapsed = round(perf_counter() - clock, 3)
     if enriched["tase_enrichment"]["status"] != "ready":
         raise ValueError("TASE source unusable in real government baseline test")
     assert source == original, "Input government records mutated"
-    rows = enriched["kinds"]["tenders"]["events"]
-    if len(rows) != len(original["kinds"]["tenders"]["events"]):
+    rows = enriched["kinds"][kind]["events"]
+    if len(rows) != len(original["kinds"][kind]["events"]):
         raise ValueError("Government procurement events lost")
     assert all(x["event_id"] == y["event_id"] and x["winners"] == y["winners"]
-               for x, y in zip(rows, original["kinds"]["tenders"]["events"]))
+               for x, y in zip(rows, original["kinds"][kind]["events"]))
     result = enriched["tase_enrichment"]["summary"]
     if result["events_total"] != len(rows):
         raise ValueError("Incorrect count of government events")
@@ -114,8 +115,8 @@ def audit(snapshot: Path, registry: Path, max_events=2500) -> dict:
         saved = json.loads(dst.read_text(encoding="utf-8"))
         if saved["tase_enrichment"]["summary"] != result:
             raise ValueError("NEWS hook and direct TASE classifier diverged")
-        original_ids = [e["event_id"] for e in original["kinds"]["tenders"]["events"]]
-        screened_ids = [e["event_id"] for e in saved["kinds"]["tenders"]["events"]]
+        original_ids = [e["event_id"] for e in original["kinds"][kind]["events"]]
+        screened_ids = [e["event_id"] for e in saved["kinds"][kind]["events"]]
         if screened_ids != original_ids:
             raise ValueError("NEWS daily hook changed order or identifiers")
 
