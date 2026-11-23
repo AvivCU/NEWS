@@ -1,6 +1,6 @@
 # NEWS / Rosario — מאגר פסילה TASE
 
-**Status (2026-11-23): REVIEW REQUIRED.** The read-only GitHub smoke test successfully fetched and parsed live official TASE API responses using the new credential; the PR remains unmerged and no official snapshot has been committed. The committed JSON intentionally contains **zero companies**, with run_status=failed. It is not a working production exclusion list until official data is fetched and real companies are verified.
+**Status (2026-11-23): REVIEW REQUIRED.** The read-only GitHub smoke test successfully fetched and parsed live official TASE API responses using the new credential; the PR remains unmerged and no official snapshot has been committed. The committed JSON intentionally contains **zero companies**, with run_status=failed. The real-data smoke test has successfully built the registry, but the snapshot intentionally stays **temporary inside GitHub Actions**. The committed placeholder is not a working production exclusion list. An approved private distribution/storage mechanism must be chosen before Rosario agents can consume it.
 
 ## What the module does
 
@@ -37,8 +37,8 @@ Official Data Hub access may require an application, subscription/approval and a
 
 1. Register legally for the official TASE Data Hub **Securities - Basic** API product.
 2. Save the actual key as a GitHub Actions repository secret named **RNEWS_TASE_2026**. The workflow maps this secret to the Python process environment variable `TASE_API_KEY`. Do not commit it to the public NEWS repository.
-3. Once merged, run the **TASE official exclusion registry** GitHub workflow manually. Its normal schedule is Friday 08:17 UTC (10:17 Israel winter / 11:17 Israel summer), before the Saturday leads cycle.
-4. Check the workflow report, row_count, issuer_count, dates, and real-company acceptance test **before** switching any Rosario task to automatic rejection.
+3. Once merged, run the **TASE official exclusion registry** GitHub workflow manually. Its normal schedule is Friday 08:17 UTC (10:17 Israel winter / 11:17 Israel summer), before the Saturday leads cycle. **This job validates a temporary snapshot only; it neither commits raw TASE data nor uploads it as a public artifact.**
+4. Check the workflow report, row_count, issuer_count, dates, and independent real-company acceptance test **before** switching any Rosario task to automatic rejection. Actual automation also requires approved private storage/distribution of the weekly registry.
 
 Local commands (Python 3.10+; Python standard library only):
 
@@ -91,14 +91,18 @@ Other Rosario exclusions (subsidiaries >50% owned by public companies, IPO plans
 
 - [x] Unit tests: 10 synthetic positives (shares, bonds, both), 10 synthetic negatives, mismatched ID/name, similar names, stale/missing/corrupt file, unknown classification, blocked API behavior.
 - [x] Missing key -> failed status, no fabricated companies, last successful snapshot preserved after subsequent failures.
-- [ ] First real authorized TASE fetch and verification of official row counts.
-- [ ] Ten **real** known TASE-listed companies (including bond-only) matched by ID.
+- [x] First real authenticated TASE fetch succeeded on 2026-11-23: 693 official companies, 2,256 observed securities, 1,563 classified rows, 663 linked issuers; source as of 2026-11-20 (read-only workflow).
+- [ ] Independent real listed-company and bond-only checks added to read-only smoke test; mark verified only after successful live run.
 - [ ] Ten **real** Rosario-watchlist private companies checked confidentially; not placed in NEWS.
 - [ ] Confirm coverage of suspended and illiquid securities, or retain caveat.
 - [ ] After manual merge, training agent confirms actual task usage; document results.
 
 ## Security and system log
 
-No third-party packages; no execution of downloaded ZIPs, shell commands, Selenium, or Monday writes. API origin/endpoint allowlisted; redirects refused; size limits, response validation and atomic data file updates. Data older than ten days returns **לא ניתן לקבוע**, even when the last failed attempt is recent. A failed refresh keeps the last known-good rows but sets run_status=failed.
+No third-party packages; no execution of downloaded ZIPs, shell commands, Selenium, or Monday writes. Raw API responses and complete registry rows must **not** be committed or published in this public repository without confirming licensing/redistribution rights. Use only authorized internal storage for private operational data. API origin/endpoint allowlisted; redirects refused; size limits, response validation and atomic data file updates. Data older than ten days returns **לא ניתן לקבוע**, even when the last failed attempt is recent. A failed refresh keeps the last known-good rows but sets run_status=failed.
 
-**System change log — November 23, 2026:** branch adds a standalone official-source exclusion registry, offline tests, failed-state placeholder JSON and Friday workflow. No valid official production rows, no changes to Rosario private tasks, no Monday access, and no main-branch merge performed. Public NEWS must not contain private Rosario records or restricted TASE data whose redistribution is not authorized.
+**System change log — November 23, 2026:** branch adds a standalone official-source exclusion registry, offline tests, failed-state placeholder JSON and Friday workflow. Live TASE response validated, but no persistent production rows or public raw-data uploads; no changes to Rosario private tasks, no Monday access, and no main-branch merge performed. Public NEWS must not contain private Rosario records or restricted TASE data whose redistribution is not authorized.
+
+## License-aware output behavior
+
+The official site cautions against redistribution of TASE raw files without prior authorization: https://www.tase.co.il/en/support-page/?questionCode=nav205 . Do not assume a DataWise subscription permits publishing API output in a public GitHub repo. The weekly workflow therefore retains the validated JSON only inside the ephemeral GitHub runner, prints aggregate status/acceptance metrics, and discards the raw data when the job ends. Nothing writes to public main. An explicitly approved private storage and consumer path is still required for live Rosario lead exclusions. The checked-in zero-row placeholder always fails closed.
