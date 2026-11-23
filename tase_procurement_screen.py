@@ -169,7 +169,8 @@ def main(argv=None):
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args(argv)
     if args.output.resolve() in (args.events.resolve(), args.registry.resolve()):
-        parser.error("Output must differ from both input files")
+        print("NEWS TASE sidecar failed: output equals input", file=sys.stderr)
+        return 2
     try:
         source = _load_events(args.events)
         try:
