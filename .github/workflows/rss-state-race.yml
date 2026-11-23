@@ -7,6 +7,7 @@ on:
       - "rss_state_git_race_test.py"
       - "rss_state_schema_race_test.py"
       - "rss_seen_gzip_git_race_test.py"
+      - "rss_collect_catchup_gap_test.py"
       - ".github/workflows/rss-state-race.yml"
   workflow_dispatch: {}
 permissions:
@@ -22,3 +23,4 @@ jobs:
           python rss_state_git_race_test.py
           python rss_state_schema_race_test.py
           python rss_seen_gzip_git_race_test.py
+          python rss_collect_catchup_gap_test.py
