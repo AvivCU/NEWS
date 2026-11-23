@@ -1,0 +1,6 @@
+# TASE-derived shadow outputs are local/internal review data, not public GitHub artifacts.
+procurement_events_tase_review.json
+# Temporary TASE snapshots are restricted to private/ephemeral runner storage.
+.tase-*.json
+tase_weekly.json
+tase_official_smoke.json
