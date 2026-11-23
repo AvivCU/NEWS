@@ -74,6 +74,32 @@ python tase_registry.py refresh-manual --official-source-attested \
 
 The manual file is tagged **operator-attested, not independently verified**. Do not claim it was fetched by the API. Its CSV header format must be validated on the actual downloaded file. A filtered export must not be described as full coverage.
 
+
+## NEWS integration — safe, opt-in sidecar
+
+**Actual NEWS topology (verified on `main` 2026-11-23):** the public repo's daily production path is `.github/workflows/daily-procurement.yml` → `daily_procurement.py` → `procurement_delta.py` → `procurement_events.json`, preserving `state/procurement_versions.json` and compressed procurement baselines. The private Rosario Feeds news scanner and Monday lead tasks are NOT in public NEWS. TASE membership must never alter procurement collection, archive verification, history/baseline, event IDs or existing daily alerts.
+
+**Opt-in post-processing, never an upstream filter:** `tase_procurement_screen.py` consumes an existing procurement event JSON and an authorized, current TASE JSON snapshot, creates a **different** output file `procurement_events_tase_review.json`. It appends an advisory `tase_screen` section to each event with each supplier's listing evidence and `tase_enrichment` root summary. The original events file, event IDs, publication IDs, change counts and event order remain unchanged. The tool has no network, email, GitHub write, Monday call or TASE secret access. Its import has no side effects.
+
+**Supplier mapping:** NEWS `winners` are strings encoded as `"מספר חפ ספק|שם ספק"`; every supplier is evaluated separately. An exact 9-digit corporate-ID match to official listed stock or bond can yield an *advisory* positive `all_winners_exact_id_match`. A name-only match requires review; mismatched corporate ID versus name requires review; an unlisted/unknown/ambiguous ID does not qualify for exclusion. Multiple winners: the event-level flag is true **only if every supplier** has a reliable exact-ID match. It never drops events, even when every supplier is listed.
+
+**Fail-open for government procurement, fail-closed for exclusions:** a missing, stale, corrupt or unauthorized TASE registry yields `tase_enrichment.status="unavailable"`, supplier classifications `לא ניתן לקבוע`, and **zero** automatic positive exclusions. The procurement event data still passes through untouched. If the event input itself is malformed, the sidecar exits nonzero without overwriting the old output.
+
+Run locally only against data you are authorized to store and process (NOT in a public GitHub artifact):
+```bash
+python tase_procurement_screen.py \
+  --events procurement_events.json \
+  --registry /secure/private/tase_registered_securities.json \
+  --output /secure/private/procurement_events_tase_review.json
+
+python -m unittest discover -s tase_tests -p 'test_*.py' -v
+```
+
+**Non-interference guardrails:** no changes to `daily_procurement.py`, `procurement_delta.py`, `gov_dataset_reader.py`, `.github/workflows/daily-procurement.yml`, government snapshot schemas or published procurement artifacts. The original `tests/` directory is left unchanged; all TASE tests are under `tase_tests/`. The separate TASE CI job runs every existing NEWS test with its usual `lxml==6.0.2`, plus a live shadow event test using ephemeral official data. The production daily workflow neither depends on nor calls any of these TASE jobs.
+
+**Not yet production-wired:** no TASE raw JSON is published by the scheduled TASE runner, and no stable private snapshot storage/transport or licensed redistribution scope has been approved. Until private storage and downstream consumer are in place, the sidecar is a validated interface rather than an automatically running filter. Deliberately keep the TASE PR draft/unmerged and no Monday modifications.
+
+
 ## Rosario integration contract — NOT wired in this public repository
 
 Before every web lookup and before candidate insertion:
