@@ -82,7 +82,12 @@ jobs:
           prefix, remainder = after.split(start, 1)
           _, suffix = remainder.split(end, 1)
           expected = before.replace("            procurement_events.json\n", "            procurement_events.json\n            tase_shadow_status.json\n")
-          assert prefix + end + suffix == expected, "NEWS workflow changed beyond additive shadow step and status artifact"
+          # When TASE has already been merged into main, HEAD and the fetched
+          # default branch contain the SAME additive stage. The historic
+          # before/after comparison applies only to the original feature PR.
+          assert after == before or prefix + end + suffix == expected, (
+              "NEWS workflow changed beyond additive shadow step and status artifact"
+          )
           print("PASS: procurement core untouched; daily workflow contains only the optional shadow step")
           PY
 
