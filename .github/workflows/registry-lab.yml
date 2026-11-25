@@ -1,0 +1,25 @@
+name: Registry resolver lab
+on:
+  pull_request:
+    paths:
+      - 'registry_lab/**'
+      - '.github/workflows/registry-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: registry-lab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: registry_lab
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run synthetic registry and release-restore tests
+        run: python3 -m unittest -v test_registry
