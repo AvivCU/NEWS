@@ -22,4 +22,4 @@ jobs:
         with:
           persist-credentials: false
       - name: Run synthetic registry and release-restore tests
-        run: python3 -m unittest -v test_registry
+        run: python3 -m unittest discover -v
