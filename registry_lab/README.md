@@ -9,7 +9,7 @@ Use Python 3.11+ and the official registry CSV exports (primary first, supplemen
 ```sh
 python3 resolver.py build /tmp/registry.sqlite /path/to/main.csv /path/to/append.csv
 python3 resolver.py query /tmp/registry.sqlite 'Company name'
-python3 -m unittest -v test_registry
+python3 -m unittest discover -v
 ```
 
 Supply --expected with the validated count to reject an incomplete build. Invalid checksum rows are counted and excluded. The first CSV wins conflicting metadata; normalized name keys from all inputs remain searchable. SQLite opens read-only. All candidate queries are bounded and parameterized; prefix-based fuzzy search ranks at most 100 candidates and never authorizes writes. Exact name is a lookup result, not proof of identity. Prefix blocking misses first-character typos and undocumented trade names.
@@ -23,3 +23,11 @@ GH_TOKEN=... python3 storage.py /path/to/manifest.json /tmp/registry.sqlite
 ```
 
 The restore validates the existing cached DB before use, otherwise downloads the pinned asset with gh, checks both hashes and the schema/count, bounds decompression and replaces atomically. Keep the prior release for rollback. In a private workflow use contents: read, hash-versioned Actions Cache, and run discovery of missing IDs before restoring any asset. Skip the resolver if the registry is unavailable. Do not introduce dependencies into existing jobs. This prototype does not implement live Monday discovery/writes, cache action wiring, scheduled registry refresh or public release uploads. Those require private integration and acceptance tests.
+
+## CRM label search (schema 1, no database rebuild)
+
+```sh
+python3 smart_resolver.py /tmp/registry.sqlite 'Example group (owner)' --alias 'Example legal name'
+```
+
+Use `resolve_smart(db, query, aliases=())` for a CRM label. Pass up to three existing, trusted search aliases from the private system. Never add private CRM names or benchmark fixtures to this public repository. The resolver tries original names, annotations removed, group variants, mixed scripts, acronyms, transpositions and word splitting with bounded indexed prefix queries. Maximum 12 variants, 32 candidate queries, 100 name rows and five returned entities per search. Results include scores, match method and truncation information. Only a unique original normalized exact key can be marked exact (or an exact corporate ID); transformed matches are review suggestions, not permission to write. Group affiliation, company status and corporate identity are not inferred from name resemblance. No new index, schema, dependency, API call, release or scheduler is needed. Unrecorded trade names and ambiguous subsidiaries still need corroboration. Keep the original resolver for rollback and benchmark comparisons.
