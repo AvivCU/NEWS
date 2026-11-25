@@ -1,0 +1,7 @@
+*.sqlite*
+*.gz
+*.csv
+*.xlsx
+*.zip
+__pycache__/
+manifest.json

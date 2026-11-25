@@ -1,0 +1,111 @@
+name: Registry storage smoke (synthetic only)
+on:
+  push:
+    branches: [registry-resolver-lab]
+    paths: ['registry_lab/**', '.github/workflows/registry-storage-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: registry-storage-smoke-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      manifest: ${{ steps.publish.outputs.manifest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build synthetic database and publish ephemeral fixture
+        id: publish
+        working-directory: registry_lab
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: registry-lab-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python3 - <<'PY'
+          import csv, gzip, json, os, shutil
+          from pathlib import Path
+          from resolver import build, valid_id
+          from storage import digest
+          root=Path(os.environ['RUNNER_TEMP'])
+          source=root/'fixture.csv'
+          cid=next(str(i) for i in range(510000000,510000100) if valid_id(str(i)))
+          with source.open('w',encoding='utf-8',newline='') as f:
+              w=csv.writer(f)
+              w.writerow(['מספר חברה','שם חברה','שם באנגלית','סטטוס חברה','סוג תאגיד','שם עיר'])
+              w.writerow([cid,'Synthetic Fixture Only','Synthetic Fixture Only Ltd','TEST','TEST',''])
+          db=root/'fixture.sqlite'
+          build([source],db,1)
+          asset=root/'synthetic-registry.sqlite.gz'
+          with db.open('rb') as src,gzip.open(asset,'wb') as dst:
+              shutil.copyfileobj(src,dst)
+          m={'repo':os.environ['GITHUB_REPOSITORY'],'tag':os.environ['TAG'],'asset':asset.name,'db_sha256':digest(db),'asset_sha256':digest(asset),'db_bytes':db.stat().st_size,'count':1}
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:
+              out.write('manifest='+json.dumps(m)+'\n')
+          PY
+          gh release create "$TAG" "$RUNNER_TEMP/synthetic-registry.sqlite.gz" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title "Ephemeral synthetic registry smoke test" --notes "Synthetic test fixture only; no registry or CRM data. Automatically cleaned up."
+  restore:
+    needs: fixture
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/registry-smoke/registry.sqlite
+          key: registry-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Fetch and verify actual Release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANIFEST: ${{ needs.fixture.outputs.manifest }}
+        run: |
+          printf '%s' "$MANIFEST" > "$RUNNER_TEMP/manifest.json"
+          result=$(python3 registry_lab/storage.py "$RUNNER_TEMP/manifest.json" "$RUNNER_TEMP/registry-smoke/registry.sqlite")
+          test "$result" = restored
+          python3 registry_lab/resolver.py query "$RUNNER_TEMP/registry-smoke/registry.sqlite" "Synthetic Fixture Only"
+  cache:
+    needs: [fixture, restore]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ runner.temp }}/registry-smoke/registry.sqlite
+          key: registry-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
+      - name: Verify cached DB without a download token
+        env:
+          MANIFEST: ${{ needs.fixture.outputs.manifest }}
+        run: |
+          test "${{ steps.cache.outputs.cache-hit }}" = true
+          printf '%s' "$MANIFEST" > "$RUNNER_TEMP/manifest.json"
+          result=$(python3 registry_lab/storage.py "$RUNNER_TEMP/manifest.json" "$RUNNER_TEMP/registry-smoke/registry.sqlite")
+          test "$result" = cache_hit
+  cleanup:
+    if: always()
+    needs: [fixture, restore, cache]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Remove only the ephemeral synthetic release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: registry-lab-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          fi
